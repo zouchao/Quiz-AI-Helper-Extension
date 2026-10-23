@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Quiz AI Helper - AI做题助手",
+  "version": "3.0",
+  "description": "加载PDF参考文档，AI理解内容后根据页面题目自动作答",
+  "author": "Sean Zou <zouchao2008@gmail.com>",
+  "permissions": [
+    "tabs",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://*/*"],
+      "include_globs": ["https://develop.*.com/*"],
+      "js": ["lib/pdf.min.js", "lib/marked.min.js", "lib/mammoth.min.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["lib/pdf.worker.min.js", "images/buy-me-a-coffee.jpeg"],
+      "matches": ["https://*/*"]
+    }
+  ]
+}
