@@ -21,6 +21,7 @@
     // Load config from chrome.storage
     chrome.storage.local.get('qah_config', (result) => {
         if (result.qah_config) Object.assign(config, result.qah_config);
+        renderConfigTab(); // re-render with loaded values (initial render runs before storage callback)
         applyDomainGate();
     });
 
