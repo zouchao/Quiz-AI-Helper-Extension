@@ -30,8 +30,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         chrome.scripting.executeScript({
             target: { tabId: sender.tab.id },
-            files: [msg.file],
-            world: 'ISOLATED'
+            files: [msg.file]
+            // default world is ISOLATED (shared with content scripts); omitting
+            // the explicit param for compatibility with older Chrome versions
         })
         .then(() => sendResponse({ ok: true }))
         .catch(err => sendResponse({ ok: false, error: err.message }));

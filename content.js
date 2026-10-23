@@ -202,6 +202,10 @@
     }
 
     function renderDocsTab() {
+        // preserve status message across re-renders (the load flow re-renders
+        // right after writing ✓/✗ into #qah-load-status)
+        const prevStatusEl = document.getElementById('qah-load-status');
+        const prevStatus = prevStatusEl ? prevStatusEl.textContent : '';
         let listHtml = pdfDocs.map((d, i) => `
             <div class="qah-pdf-item">
                 <span class="name" title="${d.name}">\u{1F4C4} ${d.name}</span>
@@ -226,7 +230,7 @@
                 <label style="font-size:11px;font-weight:600;color:#555;margin-bottom:8px;display:block">已加载文档:</label>
                 ${listHtml}
             </div>
-            <div id="qah-load-status" style="font-size:11px;color:#888;margin-top:8px"></div>
+            <div id="qah-load-status" style="font-size:11px;color:#888;margin-top:8px">${prevStatus.replace(/</g, '&lt;')}</div>
         `;
 
         document.getElementById('qah-pdf-file').onchange = async (e) => {
@@ -459,6 +463,9 @@
             chrome.runtime.sendMessage({ type: 'INJECT_LIB', file }, resolve);
         });
         if (!resp || !resp.ok) throw new Error('组件加载失败: ' + ((resp && resp.error) || file));
+        if (!LIB_GLOBALS[file].some(g => window[g])) {
+            throw new Error('组件注入后未生效: ' + file + ' (请重新加载扩展)');
+        }
     }
 
     // ===== Document Loading =====
@@ -483,6 +490,7 @@
             }
             if (statusEl) statusEl.textContent = `✓ ${file.name} 加载完成`;
         } catch(e) {
+            console.error('[Quiz AI Helper] loadFile failed:', e);
             if (statusEl) statusEl.textContent = `✗ ${file.name} 加载失败: ${e.message}`;
         }
     }
@@ -524,6 +532,7 @@
                 if (statusEl) statusEl.textContent = `✓ ${name} 加载完成`;
             }
         } catch(e) {
+            console.error('[Quiz AI Helper] loadUrl failed:', e);
             if (statusEl) statusEl.textContent = `✗ 加载失败: ${e.message}`;
         }
     }
