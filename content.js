@@ -14,12 +14,14 @@
         anthropicBaseUrl: 'https://api.anthropic.com',
         anthropicModel: 'claude-sonnet-4-20250514',
         hotkeyToggle: 'Alt+Q',
-        hotkeyScreenshot: 'Alt+A'
+        hotkeyScreenshot: 'Alt+A',
+        allowedDomains: ''
     }, {});
 
     // Load config from chrome.storage
     chrome.storage.local.get('qah_config', (result) => {
         if (result.qah_config) Object.assign(config, result.qah_config);
+        applyDomainGate();
     });
 
     function saveConfigToStorage() {
@@ -97,6 +99,7 @@
     }
 
     function attachUI() {
+        if (!uiActive) return;
         const container = getTopLayerContainer();
         if (btn.parentElement !== container) {
             container.appendChild(btn);
@@ -104,9 +107,37 @@
         }
     }
 
-    attachUI();
+    // ===== Domain Gating =====
+    let uiActive = false;
 
-    const uiObserver = new MutationObserver(() => attachUI());
+    function escapeRegExp(s) {
+        return s.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function hostAllowed() {
+        const list = (config.allowedDomains || '')
+            .split(/[\n,]/)
+            .map(s => s.trim().toLowerCase())
+            .filter(Boolean);
+        if (!list.length) return true; // empty = all sites
+        const host = location.hostname.toLowerCase();
+        return list.some(pattern => {
+            const re = new RegExp('^' + pattern.split('*').map(escapeRegExp).join('.*') + '$');
+            return re.test(host);
+        });
+    }
+
+    function applyDomainGate() {
+        if (hostAllowed()) {
+            if (!uiActive) { uiActive = true; attachUI(); }
+        } else if (uiActive) {
+            uiActive = false;
+            btn.remove();
+            panel.remove();
+        }
+    }
+
+    const uiObserver = new MutationObserver(() => { if (uiActive) attachUI(); });
     uiObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open'] });
 
     btn.onclick = () => panel.classList.toggle('show');
@@ -232,6 +263,12 @@
             </div>
             <div id="qah-provider-fields"></div>
             <div style="margin-top:14px;padding-top:12px;border-top:1px solid #eee">
+                <div class="qah-field">
+                    <label>生效域名 (每行一个或逗号分隔，支持 * 通配符，留空 = 所有网站)</label>
+                    <textarea id="qah-domains" rows="3" placeholder="例如:&#10;develop.*.com&#10;*.example.com"></textarea>
+                </div>
+            </div>
+            <div style="margin-top:14px;padding-top:12px;border-top:1px solid #eee">
                 <label style="font-size:11px;font-weight:600;color:#555;margin-bottom:8px;display:block">快捷键设置 (修改后即时生效)</label>
                 <div class="qah-field">
                     <label>打开/关闭面板</label>
@@ -246,6 +283,7 @@
             <span id="qah-save-status" style="margin-left:10px;font-size:11px;color:#10b981"></span>
         `;
         renderProviderFields();
+        document.getElementById('qah-domains').value = config.allowedDomains || '';
         document.getElementById('qah-provider').onchange = (e) => {
             config.provider = e.target.value;
             renderProviderFields();
@@ -399,12 +437,29 @@
         }
         config.hotkeyToggle = document.getElementById('qah-hotkey-toggle').value.trim() || 'Alt+Q';
         config.hotkeyScreenshot = document.getElementById('qah-hotkey-screenshot').value.trim() || 'Alt+A';
+        config.allowedDomains = document.getElementById('qah-domains').value.trim();
         saveConfigToStorage();
+        applyDomainGate();
         document.getElementById('qah-save-status').textContent = '✓ 已保存';
         setTimeout(() => {
             const el = document.getElementById('qah-save-status');
             if (el) el.textContent = '';
         }, 2000);
+    }
+
+    // ===== Lazy Library Loading =====
+    const LIB_GLOBALS = {
+        'lib/pdf.min.js': ['pdfjsLib', 'pdfjs-dist/build/pdf'],
+        'lib/marked.min.js': ['marked'],
+        'lib/mammoth.min.js': ['mammoth']
+    };
+
+    async function ensureLib(file) {
+        if (LIB_GLOBALS[file].some(g => window[g])) return;
+        const resp = await new Promise(resolve => {
+            chrome.runtime.sendMessage({ type: 'INJECT_LIB', file }, resolve);
+        });
+        if (!resp || !resp.ok) throw new Error('组件加载失败: ' + ((resp && resp.error) || file));
     }
 
     // ===== Document Loading =====
@@ -417,6 +472,7 @@
                 const buf = await file.arrayBuffer();
                 await extractPDF(new Uint8Array(buf), file.name);
             } else if (ext === 'docx') {
+                await ensureLib('lib/mammoth.min.js');
                 const buf = await file.arrayBuffer();
                 const result = await mammoth.extractRawText({ arrayBuffer: buf });
                 pdfDocs.push({ name: file.name, text: result.value });
@@ -474,6 +530,7 @@
     }
 
     async function extractPDF(data, name) {
+        await ensureLib('lib/pdf.min.js');
         const pdfjsLib = window['pdfjs-dist/build/pdf'] || window.pdfjsLib;
         pdfjsLib.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL('lib/pdf.worker.min.js');
         const pdf = await pdfjsLib.getDocument({ data }).promise;
@@ -634,6 +691,7 @@
             } else {
                 answer = await callAnthropic(systemPrompt, userText, screenshotBase64);
             }
+            try { await ensureLib('lib/marked.min.js'); } catch(e) { /* fall back to plain text */ }
             answerArea.innerHTML = `<div class="qah-answer-box">${renderMarkdown(answer)}</div>`;
         } catch(e) {
             answerArea.innerHTML = `<div class="qah-answer-box error">${e.message}</div>`;
@@ -744,6 +802,7 @@
     }
 
     document.addEventListener('keydown', (e) => {
+        if (!uiActive) return;
         if (matchHotkey(e, config.hotkeyToggle)) { e.preventDefault(); panel.classList.toggle('show'); }
         if (matchHotkey(e, config.hotkeyScreenshot)) { e.preventDefault(); panel.classList.add('show'); captureScreenshot(); }
     });

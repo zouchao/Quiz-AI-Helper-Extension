@@ -22,6 +22,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         return true;
     }
 
+    if (msg.type === 'INJECT_LIB') {
+        const ALLOWED_LIBS = ['lib/pdf.min.js', 'lib/marked.min.js', 'lib/mammoth.min.js'];
+        if (!ALLOWED_LIBS.includes(msg.file)) {
+            sendResponse({ ok: false, error: 'not allowed: ' + msg.file });
+            return true;
+        }
+        chrome.scripting.executeScript({
+            target: { tabId: sender.tab.id },
+            files: [msg.file],
+            world: 'ISOLATED'
+        })
+        .then(() => sendResponse({ ok: true }))
+        .catch(err => sendResponse({ ok: false, error: err.message }));
+        return true;
+    }
+
     if (msg.type === 'FETCH_BINARY') {
         fetch(msg.url)
         .then(resp => resp.arrayBuffer())
