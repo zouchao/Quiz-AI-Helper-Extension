@@ -73,6 +73,7 @@
     const btn = document.createElement('button');
     btn.id = 'qah-btn';
     btn.textContent = '\u{1F916}';
+    btn.style.display = 'none'; // hidden until domain gate allows (avoids flash on disallowed sites)
 
     const panel = document.createElement('div');
     panel.id = 'qah-panel';
@@ -100,13 +101,14 @@
     }
 
     function attachUI() {
-        if (!uiActive) return;
         const container = getTopLayerContainer();
         if (btn.parentElement !== container) {
             container.appendChild(btn);
             container.appendChild(panel);
         }
     }
+
+    attachUI();
 
     // ===== Domain Gating =====
     let uiActive = false;
@@ -129,16 +131,12 @@
     }
 
     function applyDomainGate() {
-        if (hostAllowed()) {
-            if (!uiActive) { uiActive = true; attachUI(); }
-        } else if (uiActive) {
-            uiActive = false;
-            btn.remove();
-            panel.remove();
-        }
+        uiActive = hostAllowed();
+        btn.style.display = uiActive ? '' : 'none';
+        if (!uiActive) panel.classList.remove('show');
     }
 
-    const uiObserver = new MutationObserver(() => { if (uiActive) attachUI(); });
+    const uiObserver = new MutationObserver(() => attachUI());
     uiObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open'] });
 
     btn.onclick = () => panel.classList.toggle('show');
