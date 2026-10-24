@@ -201,6 +201,32 @@
         };
     }
 
+    function escHtml(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Scan the page (and same-origin iframes) for embedded PDF urls:
+    // iframe/embed/object src, object data, anchor href
+    function scanEmbeddedPdfs(doc, seen) {
+        seen = seen || new Set();
+        const add = (raw) => {
+            if (!raw) return;
+            try {
+                const abs = new URL(raw, doc.baseURI || location.href).href;
+                if (/\.pdf(\?|#|$)/i.test(abs)) seen.add(abs);
+            } catch(e) { /* ignore malformed urls */ }
+        };
+        doc.querySelectorAll('iframe[src], frame[src], embed[src], object[data], a[href]').forEach(el => {
+            add(el.getAttribute('src') || el.getAttribute('data') || el.getAttribute('href'));
+        });
+        doc.querySelectorAll('iframe, frame').forEach(f => {
+            try {
+                if (f.contentDocument && f.contentDocument !== doc) scanEmbeddedPdfs(f.contentDocument, seen);
+            } catch(e) { /* cross-origin iframe: inner DOM not accessible */ }
+        });
+        return [...seen];
+    }
+
     function renderDocsTab() {
         // preserve status message across re-renders (the load flow re-renders
         // right after writing ✓/✗ into #qah-load-status)
@@ -226,6 +252,11 @@
                     <button class="qah-btn" id="qah-load-url">加载</button>
                 </div>
             </div>
+            <div class="qah-field">
+                <label>或扫描页面内嵌 PDF (iframe / embed / 页面链接)</label>
+                <button class="qah-btn secondary" id="qah-scan-pdfs" style="width:100%">扫描当前页面</button>
+                <div id="qah-scan-result"></div>
+            </div>
             <div style="margin-top:12px">
                 <label style="font-size:11px;font-weight:600;color:#555;margin-bottom:8px;display:block">已加载文档:</label>
                 ${listHtml}
@@ -245,6 +276,28 @@
             const url = document.getElementById('qah-pdf-url').value.trim();
             if (url) await loadUrl(url);
             renderDocsTab();
+        };
+
+        document.getElementById('qah-scan-pdfs').onclick = () => {
+            const urls = scanEmbeddedPdfs(document);
+            const box = document.getElementById('qah-scan-result');
+            if (!urls.length) {
+                box.innerHTML = '<div style="color:#999;font-size:11px;padding:6px 0">未检测到内嵌 PDF。跨域 iframe 内部的 PDF 无法扫描，请手动粘贴链接。</div>';
+                return;
+            }
+            box.innerHTML = urls.map(u => {
+                const name = decodeURIComponent((u.split('/').pop() || u).split('?')[0]);
+                return `<div class="qah-pdf-item">
+                    <span class="name" title="${escHtml(u)}">\u{1F50D} ${escHtml(name)}</span>
+                    <button class="qah-btn" data-load="${escHtml(u)}" style="padding:4px 8px;font-size:11px">加载</button>
+                </div>`;
+            }).join('');
+            box.querySelectorAll('[data-load]').forEach(b => {
+                b.onclick = async () => {
+                    await loadUrl(b.dataset.load);
+                    renderDocsTab();
+                };
+            });
         };
 
         tabContainers.docs.querySelectorAll('[data-rm]').forEach(b => {

@@ -47,6 +47,8 @@
 
 ![文档标签](images/screenshots/03-docs-tab.png)
 
+也可以点 **扫描当前页面** 自动检测页面内嵌的 PDF（`iframe` / `embed` / 页面链接），一键加载为参考文档。注意：跨域嵌套 iframe（跨域 iframe 内部的第二层 iframe）中的 PDF 无法扫描，需手动粘贴链接。
+
 ### 4. 作答
 
 回到 **答题** 标签，三种出题方式任选：

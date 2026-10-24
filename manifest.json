@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Quiz AI Helper - AI做题助手",
-  "version": "3.1",
+  "version": "3.2",
   "description": "加载PDF参考文档，AI理解内容后根据页面题目自动作答",
   "author": "Sean Zou <zouchao2008@gmail.com>",
   "permissions": [
