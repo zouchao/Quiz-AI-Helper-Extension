@@ -1,0 +1,4 @@
+{
+  "extName": { "message": "Quiz AI Helper - AI做题助手" },
+  "extDescription": { "message": "加载PDF参考文档，AI理解内容后根据页面题目自动作答" }
+}

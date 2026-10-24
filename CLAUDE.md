@@ -17,6 +17,7 @@ Quiz AI Helper — Chrome 扩展 (Manifest V3)，加载参考文档后 AI 根据
 - 扫描结果同理：`renderDocsTab()` 每次重建都会把 `#qah-scan-result` 清空，故扫描列表持久化在 `lastScanUrls`（+ `loadedScanUrls` 记录已加载项）里，由 `renderScanResult()` 在每次重渲染末尾回填；加载一个 PDF 后其余项不能消失。`loadUrl()` 返回 boolean 供此判断
 - 跨域 iframe 里的 PDF：content script `all_frames:true`，子 frame 静默运行（IIFE 最前面早退，不建任何 UI/storage 回调），顶层通过 `postMessage` 中继逐层汇总（`scanAllFrames` / `relayScanToChildren`）
 - 后台代理的库注入有白名单（`ALLOWED_LIBS`），新增库要同步改
+- i18n（中/英）：所有面板文案和提示词都在 `content.js` 顶部的 `I18N.zh` / `I18N.en` 词典里，用 `t(key, ...args)` 读取（占位符 `{0}`）；新增文案必须两套同时加。`config.language`（auto/zh/en）决定界面和提示词语言，auto 按 `navigator.language` 判断；`config.answerLang`（question/ui/zh/en）决定 AI 回答语言，默认跟随题目。切换语言走 `renderAll()`（会保留已输入的题目和答案）。商店名称/描述在 `_locales/*/messages.json`，`manifest.json` 用 `__MSG_*__` 引用
 - AI 服务商两种：`openai`（兼容任意 `/chat/completions` 端点）和 `anthropic`（原生 Messages API）
 
 ## TODO / Feature Ideas
