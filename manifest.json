@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Quiz AI Helper - AI做题助手",
+  "name": "__MSG_extName__",
   "version": "3.3",
-  "description": "加载PDF参考文档，AI理解内容后根据页面题目自动作答",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
   "author": "Sean Zou <zouchao2008@gmail.com>",
   "permissions": [
     "tabs",

@@ -1,0 +1,4 @@
+{
+  "extName": { "message": "Quiz AI Helper" },
+  "extDescription": { "message": "Load reference documents, then let AI answer the quiz questions on the page based on them." }
+}
