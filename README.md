@@ -47,7 +47,7 @@
 
 ![文档标签](images/screenshots/03-docs-tab.png)
 
-也可以点 **扫描当前页面** 自动检测页面内嵌的 PDF（`iframe` / `embed` / 页面链接），一键加载为参考文档。注意：跨域嵌套 iframe（跨域 iframe 内部的第二层 iframe）中的 PDF 无法扫描，需手动粘贴链接。
+也可以点 **扫描当前页面** 自动检测页面内嵌的 PDF（`iframe` / `embed` / 页面链接），一键加载为参考文档。跨域 iframe 中的 PDF 也能扫到：扩展会在每个 iframe 内运行并通过消息中继汇总结果（支持多层嵌套）。注意扫描时需等页面（含 iframe）完全加载。
 
 ### 4. 作答
 

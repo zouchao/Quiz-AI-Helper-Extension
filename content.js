@@ -1,6 +1,23 @@
 (function() {
     'use strict';
 
+    // ===== Subframe mode =====
+    // In iframes we run headless: no UI, but we answer scan requests from the
+    // top frame via postMessage so cross-origin iframe PDFs are discoverable.
+    // Must be the very first thing — everything below assumes the top frame
+    // (storage callbacks, renderConfigTab, DOM attach).
+    if (window.top !== window) {
+        window.addEventListener('message', (e) => {
+            const d = e.data;
+            if (!d || d.qahScan !== 'req' || !e.source) return;
+            const own = scanEmbeddedPdfs(document);
+            relayScanToChildren(d.nonce).then(extra => {
+                try { e.source.postMessage({ qahScan: 'res', nonce: d.nonce, urls: own.concat(extra) }, '*'); } catch(err) {}
+            });
+        });
+        return;
+    }
+
     // ===== State =====
     let screenshotBase64 = null;
     let pdfDocs = []; // [{name, text}] - stores all document types
@@ -227,6 +244,44 @@
         return [...seen];
     }
 
+    // Ask each child frame (cross-origin included) to scan its own document;
+    // postMessage reaches cross-origin frames where contentDocument cannot.
+    function relayScanToChildren(nonce) {
+        const promises = [];
+        for (let i = 0; i < window.frames.length; i++) {
+            const win = window.frames[i];
+            promises.push(new Promise(resolve => {
+                let done = false;
+                const handler = (e) => {
+                    if (e.data && e.data.qahScan === 'res' && e.data.nonce === nonce && e.source === win) {
+                        done = true;
+                        window.removeEventListener('message', handler);
+                        resolve(e.data.urls || []);
+                    }
+                };
+                window.addEventListener('message', handler);
+                try {
+                    win.postMessage({ qahScan: 'req', nonce }, '*');
+                } catch(e) {
+                    window.removeEventListener('message', handler);
+                    resolve([]);
+                    return;
+                }
+                setTimeout(() => {
+                    if (!done) { window.removeEventListener('message', handler); resolve([]); }
+                }, 800);
+            }));
+        }
+        return Promise.all(promises).then(rs => rs.flat());
+    }
+
+    async function scanAllFrames() {
+        const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+        const own = scanEmbeddedPdfs(document);
+        const extra = await relayScanToChildren(nonce);
+        return [...new Set(own.concat(extra))];
+    }
+
     function renderDocsTab() {
         // preserve status message across re-renders (the load flow re-renders
         // right after writing ✓/✗ into #qah-load-status)
@@ -278,11 +333,11 @@
             renderDocsTab();
         };
 
-        document.getElementById('qah-scan-pdfs').onclick = () => {
-            const urls = scanEmbeddedPdfs(document);
+        document.getElementById('qah-scan-pdfs').onclick = async () => {
+            const urls = await scanAllFrames();
             const box = document.getElementById('qah-scan-result');
             if (!urls.length) {
-                box.innerHTML = '<div style="color:#999;font-size:11px;padding:6px 0">未检测到内嵌 PDF。跨域 iframe 内部的 PDF 无法扫描，请手动粘贴链接。</div>';
+                box.innerHTML = '<div style="color:#999;font-size:11px;padding:6px 0">未检测到内嵌 PDF。若 PDF 在 iframe 中，请等页面完全加载后重试，或手动粘贴链接。</div>';
                 return;
             }
             box.innerHTML = urls.map(u => {
