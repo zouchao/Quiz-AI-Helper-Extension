@@ -14,6 +14,8 @@ Quiz AI Helper — Chrome 扩展 (Manifest V3)，加载参考文档后 AI 根据
 - 配置存于 `chrome.storage.local`（key: `qah_config`）；storage 回调是异步的，加载后需 `renderConfigTab()` 重新渲染 + `applyDomainGate()`
 - panel/btn 必须**同步挂载**到 DOM（后续大量 `document.getElementById` 依赖），域名门控只控制 `btn.style.display`，不挂/卸 DOM
 - 重渲染 tab 时注意保留 `#qah-load-status` 等状态信息，不要静默吞掉错误
+- 扫描结果同理：`renderDocsTab()` 每次重建都会把 `#qah-scan-result` 清空，故扫描列表持久化在 `lastScanUrls`（+ `loadedScanUrls` 记录已加载项）里，由 `renderScanResult()` 在每次重渲染末尾回填；加载一个 PDF 后其余项不能消失。`loadUrl()` 返回 boolean 供此判断
+- 跨域 iframe 里的 PDF：content script `all_frames:true`，子 frame 静默运行（IIFE 最前面早退，不建任何 UI/storage 回调），顶层通过 `postMessage` 中继逐层汇总（`scanAllFrames` / `relayScanToChildren`）
 - 后台代理的库注入有白名单（`ALLOWED_LIBS`），新增库要同步改
 - AI 服务商两种：`openai`（兼容任意 `/chat/completions` 端点）和 `anthropic`（原生 Messages API）
 

@@ -22,6 +22,8 @@
     let screenshotBase64 = null;
     let pdfDocs = []; // [{name, text}] - stores all document types
     let noDocMode = false;
+    let lastScanUrls = [];        // survives re-render so you can load several PDFs from one scan
+    let loadedScanUrls = new Set(); // scanned URLs already loaded, shown as ✓ 已加载
     let config = Object.assign({
         provider: 'openai',
         apiKey: '',
@@ -282,6 +284,32 @@
         return [...new Set(own.concat(extra))];
     }
 
+    // Render the persisted scan-result list (lastScanUrls) into #qah-scan-result.
+    // Called after every docs-tab re-render so scanned PDFs don't vanish once
+    // you load one of them. Loaded items show ✓ 已加载 instead of a button.
+    function renderScanResult() {
+        const box = document.getElementById('qah-scan-result');
+        if (!box) return;
+        if (!lastScanUrls.length) { box.innerHTML = ''; return; }
+        box.innerHTML = lastScanUrls.map(u => {
+            const name = decodeURIComponent((u.split('/').pop() || u).split('?')[0]);
+            const action = loadedScanUrls.has(u)
+                ? `<span style="color:#2e7d32;font-size:11px;padding:4px 8px;white-space:nowrap">✓ 已加载</span>`
+                : `<button class="qah-btn" data-load="${escHtml(u)}" style="padding:4px 8px;font-size:11px">加载</button>`;
+            return `<div class="qah-pdf-item">
+                <span class="name" title="${escHtml(u)}">\u{1F50D} ${escHtml(name)}</span>
+                ${action}
+            </div>`;
+        }).join('');
+        box.querySelectorAll('[data-load]').forEach(b => {
+            b.onclick = async () => {
+                const ok = await loadUrl(b.dataset.load);
+                if (ok) loadedScanUrls.add(b.dataset.load);
+                renderDocsTab();
+            };
+        });
+    }
+
     function renderDocsTab() {
         // preserve status message across re-renders (the load flow re-renders
         // right after writing ✓/✗ into #qah-load-status)
@@ -337,22 +365,12 @@
             const urls = await scanAllFrames();
             const box = document.getElementById('qah-scan-result');
             if (!urls.length) {
+                lastScanUrls = [];
                 box.innerHTML = '<div style="color:#999;font-size:11px;padding:6px 0">未检测到内嵌 PDF。若 PDF 在 iframe 中，请等页面完全加载后重试，或手动粘贴链接。</div>';
                 return;
             }
-            box.innerHTML = urls.map(u => {
-                const name = decodeURIComponent((u.split('/').pop() || u).split('?')[0]);
-                return `<div class="qah-pdf-item">
-                    <span class="name" title="${escHtml(u)}">\u{1F50D} ${escHtml(name)}</span>
-                    <button class="qah-btn" data-load="${escHtml(u)}" style="padding:4px 8px;font-size:11px">加载</button>
-                </div>`;
-            }).join('');
-            box.querySelectorAll('[data-load]').forEach(b => {
-                b.onclick = async () => {
-                    await loadUrl(b.dataset.load);
-                    renderDocsTab();
-                };
-            });
+            lastScanUrls = urls;
+            renderScanResult();
         };
 
         tabContainers.docs.querySelectorAll('[data-rm]').forEach(b => {
@@ -361,6 +379,10 @@
                 renderDocsTab();
             };
         });
+
+        // repopulate the scan-result list from persisted state (innerHTML above
+        // always creates #qah-scan-result empty)
+        renderScanResult();
     }
 
     function renderConfigTab() {
@@ -619,6 +641,7 @@
                 const name = url.split('/').pop().split('?')[0] || 'document.pdf';
                 await extractPDF(bytes, name);
                 if (statusEl) statusEl.textContent = `✓ ${name} 加载完成`;
+                return true;
             } else {
                 const resp = await new Promise((resolve) => {
                     chrome.runtime.sendMessage({
@@ -638,10 +661,12 @@
                 const name = url.replace(/^https?:\/\//, '').split('/')[0] || 'webpage';
                 pdfDocs.push({ name, text: text.slice(0, 200000) });
                 if (statusEl) statusEl.textContent = `✓ ${name} 加载完成`;
+                return true;
             }
         } catch(e) {
             console.error('[Quiz AI Helper] loadUrl failed:', e);
             if (statusEl) statusEl.textContent = `✗ 加载失败: ${e.message}`;
+            return false;
         }
     }
 
