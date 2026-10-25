@@ -4,7 +4,8 @@ Quiz AI Helper — Chrome 扩展 (Manifest V3)，加载参考文档后 AI 根据
 
 ## 项目结构
 
-- `manifest.json` — MV3 配置；content script 注入所有 HTTPS 页面，只注入 `content.js`
+- `README.md`（英文，默认）/ `README.zh-CN.md`（中文）— 顶部互链，改一份时同步另一份
+- `manifest.json` — MV3 配置；content script 注入所有 HTTPS 页面，注入 `i18n.js` + `content.js`
 - `i18n.js` — 中/英词典（全局 `QAH_I18N`），先于 `content.js` 注入
 - `content.js` — 单文件 IIFE：UI 面板、答题逻辑、域名门控、配置管理
 - `background.js` — Service Worker：`CAPTURE_TAB` 截图 / `API_REQUEST` 请求代理 / `INJECT_LIB` 按需注入库 / `FETCH_BINARY` 二进制下载
