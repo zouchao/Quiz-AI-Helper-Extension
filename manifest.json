@@ -22,7 +22,8 @@
   "content_scripts": [
     {
       "matches": ["https://*/*"],
-      "js": ["i18n.js", "content.js"],
+      "js": ["i18n.js", "icons.js", "content.js"],
+      "css": ["styles.css"],
       "run_at": "document_idle",
       "all_frames": true
     }

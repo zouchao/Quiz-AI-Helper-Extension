@@ -93,6 +93,8 @@ develop.*.com
 ```
 ├── manifest.json      # 扩展配置（Manifest V3）
 ├── i18n.js            # 中 / 英文案与提示词词典
+├── icons.js           # Logo 与线性图标 SVG
+├── styles.css         # 面板样式
 ├── content.js         # 内容脚本：UI 面板、答题逻辑
 ├── background.js      # Service Worker：截图、API 请求代理
 ├── _locales/          # 商店名称与描述（zh_CN / en）

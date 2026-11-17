@@ -5,13 +5,15 @@ Quiz AI Helper — Chrome 扩展 (Manifest V3)，加载参考文档后 AI 根据
 ## 项目结构
 
 - `README.md`（英文，默认）/ `README.zh-CN.md`（中文）— 顶部互链，改一份时同步另一份
-- `manifest.json` — MV3 配置；content script 注入所有 HTTPS 页面，注入 `i18n.js` + `content.js`
+- `manifest.json` — MV3 配置；content script 注入所有 HTTPS 页面，注入 `i18n.js` + `icons.js` + `content.js` 及 `styles.css`
 - `i18n.js` — 中/英词典（全局 `QAH_I18N`），先于 `content.js` 注入
-- `content.js` — 单文件 IIFE：UI 面板、答题逻辑、域名门控、配置管理
+- `icons.js` — logo / 线性图标 SVG 及 `icon()` / `chip()` / `groupTitle()` / `fileTone()` 助手（全局 `QAH_ICONS`），先于 `content.js` 注入
+- `styles.css` — 面板全部样式，经 manifest `content_scripts.css` 注入；选择器一律以 `#qah-btn` / `#qah-panel` 限定，避免污染宿主页面
+- `content.js` — IIFE：UI 面板、答题逻辑、域名门控、配置管理
 - `background.js` — Service Worker：`CAPTURE_TAB` 截图 / `API_REQUEST` 请求代理 / `INJECT_LIB` 按需注入库 / `FETCH_BINARY` 二进制下载
-- `icons/` — 扩展图标（16/32/48/128），由 `content.js` 里的 `LOGO_SVG` 渲染而来；改 logo 时同步重新导出。logo 动画纯 CSS（`.qah-logo` 规则）：待机星光闪烁 / hover 弹出 / `setLogoThinking()` 在 `askAI()` 期间让金色圆点扫描选项，结束时落定打勾
-- 配色「墨蓝 + 金盏黄」：CSS 变量定义在 `#qah-btn,#qah-panel{--qah-*}`（`--qah-ink` #1F2A44 主色 / `--qah-gold` #F2A93B 强调 / `--qah-paper` #FBF7EF 纸色），组件里不要写裸 hex；辅助色 teal/blue/violet/coral（各带 `-soft` 底色）只用于图标色块
-- 图标：`ICON_PATHS` + `icon(name)` / `chip(name, tone)` / `groupTitle()`（content.js 顶部），线性图标 stroke=currentColor，不用 emoji
+- `icons/` — 扩展图标（16/32/48/128），由 `icons.js` 里的 `LOGO_SVG` 渲染而来；改 logo 时同步重新导出。logo 动画纯 CSS（`styles.css` 里 `.qah-logo` 规则）：待机星光闪烁 / hover 弹出 / `setLogoThinking()` 在 `askAI()` 期间让金色圆点扫描选项，结束时落定打勾
+- 配色「墨蓝 + 金盏黄」：CSS 变量定义在 `styles.css` 的 `#qah-btn,#qah-panel{--qah-*}`（`--qah-ink` #1F2A44 主色 / `--qah-gold` #F2A93B 强调 / `--qah-paper` #FBF7EF 纸色），组件里不要写裸 hex；辅助色 teal/blue/violet/coral（各带 `-soft` 底色）只用于图标色块
+- 图标：`ICON_PATHS` + `icon(name)` / `chip(name, tone)` / `groupTitle()`（`icons.js`），线性图标 stroke=currentColor，不用 emoji
 - `lib/` — pdf.js / marked / mammoth，**按需注入**（不在 content_scripts 中），通过 `chrome.scripting.executeScript`（ISOLATED world，与 content script 共享全局）
 
 ## 关键约定

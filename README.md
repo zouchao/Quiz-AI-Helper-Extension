@@ -95,6 +95,8 @@ Leave it empty to enable all sites again.
 ```
 ├── manifest.json      # Extension config (Manifest V3)
 ├── i18n.js            # Chinese / English strings and prompt dictionaries
+├── icons.js           # Logo and line-icon SVGs
+├── styles.css         # Panel styles
 ├── content.js         # Content script: UI panel, answering logic
 ├── background.js      # Service Worker: screenshots, API request proxy
 ├── _locales/          # Store name and description (zh_CN / en)

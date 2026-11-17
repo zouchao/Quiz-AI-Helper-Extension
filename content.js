@@ -63,116 +63,9 @@
         chrome.storage.local.set({ qah_config: config });
     }
 
-    // ===== Styles =====
-    const style = document.createElement('style');
-    style.textContent = `
-        #qah-btn,#qah-panel{--qah-ink:#1F2A44;--qah-ink-2:#2E3D5E;--qah-gold:#F2A93B;--qah-gold-soft:#FCEBCB;--qah-paper:#FBF7EF;--qah-text:#2B2A27;--qah-muted:#6B6458;--qah-line:#E8E1D3;--qah-soft:#F4EEE2;--qah-bg:#fff;--qah-ok:#2F7D5B;--qah-err:#B4412F;--qah-err-soft:#FBEDEA;--qah-teal:#2A8C82;--qah-teal-soft:#DDF1EE;--qah-coral:#D9634A;--qah-coral-soft:#FBE4DD;--qah-blue:#3B6FD4;--qah-blue-soft:#E1EAFB;--qah-violet:#7A5CC9;--qah-violet-soft:#ECE6F8}
-        #qah-btn{position:fixed;bottom:20px;right:20px;z-index:2147483647;width:48px;height:48px;border-radius:14px;background:var(--qah-ink);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 1px 2px rgba(31,42,68,.2),0 6px 16px rgba(31,42,68,.22);transition:transform .18s ease,box-shadow .18s ease}
-        #qah-btn:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(31,42,68,.2),0 10px 22px rgba(31,42,68,.28)}
-        #qah-btn:active{transform:translateY(0)}
-        #qah-btn svg{width:30px;height:30px;display:block}
-        .qah-logo .qah-mark-pick{transform-box:view-box;transform-origin:5px 12px}
-        .qah-logo .qah-spark{transform-box:view-box;transform-origin:20.5px 4.2px;animation:qahTwinkle 4s ease-in-out infinite}
-        .qah-logo .qah-tick{stroke-dasharray:1;stroke-dashoffset:0}
-        .qah-logo .qah-row{transition:stroke-opacity .2s}
-        #qah-btn:hover .qah-logo:not(.qah-thinking) .qah-mark-pick{animation:qahPop .35s cubic-bezier(.3,1.6,.5,1)}
-        #qah-btn:hover .qah-logo:not(.qah-thinking) .qah-tick{animation:qahTick .35s ease-out .1s both}
-        .qah-logo.qah-thinking .qah-mark-pick{animation:qahScan 1.4s cubic-bezier(.65,0,.35,1) infinite}
-        .qah-logo.qah-thinking .qah-tick{stroke-dashoffset:1;transition:none}
-        .qah-logo.qah-thinking .qah-spark{animation:qahSpin 1.4s linear infinite}
-        .qah-logo.qah-thinking .qah-row-1{animation:qahRow 1.4s infinite}
-        .qah-logo.qah-thinking .qah-row-3{animation:qahRow 1.4s infinite .7s}
-        .qah-logo.qah-thinking .qah-row-2{animation:qahRowMid 1.4s infinite}
-        .qah-logo.qah-settle .qah-mark-pick{animation:qahPop .4s cubic-bezier(.3,1.6,.5,1)}
-        .qah-logo.qah-settle .qah-tick{animation:qahTick .4s ease-out .15s both}
-        @keyframes qahTwinkle{0%,80%,100%{transform:scale(1) rotate(0);opacity:1}88%{transform:scale(1.45) rotate(45deg);opacity:.75}}
-        @keyframes qahSpin{0%{transform:rotate(0) scale(1.2)}50%{transform:rotate(180deg) scale(.8)}100%{transform:rotate(360deg) scale(1.2)}}
-        @keyframes qahPop{0%{transform:scale(.6)}100%{transform:scale(1)}}
-        @keyframes qahTick{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
-        @keyframes qahScan{0%,100%{transform:translateY(0)}20%,30%{transform:translateY(-7px)}70%,80%{transform:translateY(7px)}}
-        @keyframes qahRow{0%,15%,35%,100%{stroke-opacity:.45}25%{stroke-opacity:1}}
-        @keyframes qahRowMid{0%,45%,55%,100%{stroke-opacity:1}15%,35%,65%,85%{stroke-opacity:.45}}
-        #qah-panel{position:fixed;top:50%;right:20px;transform:translateY(-50%);z-index:2147483646;width:560px;max-width:calc(100vw - 40px);max-height:85vh;background:var(--qah-bg);border:1px solid var(--qah-line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.12);display:none;flex-direction:column;font-family:-apple-system,system-ui,"PingFang SC","Microsoft YaHei",sans-serif;font-size:13px;color:var(--qah-text);accent-color:var(--qah-ink);overflow:hidden}
-        #qah-panel.show{display:flex}
-        #qah-btn:focus-visible,#qah-panel :focus-visible{outline:2px solid var(--qah-ink);outline-offset:2px}
-        .qah-header{padding:12px 16px;background:var(--qah-paper);color:var(--qah-ink);font-weight:600;font-size:14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--qah-line)}
-        .qah-brand{display:flex;align-items:center;gap:10px;letter-spacing:.01em}
-        .qah-brand-logo{width:26px;height:26px;border-radius:8px;background:var(--qah-ink);display:flex;align-items:center;justify-content:center}
-        .qah-brand-logo svg{width:18px;height:18px;display:block}
-        .qah-close{background:none;border:none;color:var(--qah-muted);font-size:20px;line-height:1;width:28px;height:28px;border-radius:6px;cursor:pointer;padding:0}
-        .qah-close:hover{background:var(--qah-soft);color:var(--qah-ink)}
-        .qah-tabs{display:flex;gap:4px;padding:0 12px;border-bottom:1px solid var(--qah-line);background:var(--qah-paper)}
-        .qah-ic{width:16px;height:16px;flex:none;display:inline-block;vertical-align:-3px}
-        .qah-tab{display:flex;align-items:center;gap:6px;padding:10px 10px;margin-bottom:-1px;cursor:pointer;font-size:12px;font-weight:500;color:var(--qah-muted);border-bottom:2px solid transparent;transition:color .15s,border-color .15s}
-        .qah-tab .qah-ic{width:15px;height:15px;opacity:.75;transition:opacity .15s}
-        .qah-tab.active .qah-ic,.qah-tab:hover .qah-ic{opacity:1}
-        .qah-tab[data-tab=answer] .qah-ic{color:var(--qah-gold)}.qah-tab[data-tab=docs] .qah-ic{color:var(--qah-teal)}.qah-tab[data-tab=config] .qah-ic{color:var(--qah-blue)}.qah-tab[data-tab=support] .qah-ic{color:var(--qah-coral)}
-        .qah-chip{width:28px;height:28px;border-radius:8px;flex:none;display:inline-flex;align-items:center;justify-content:center}
-        .qah-chip .qah-ic{width:15px;height:15px}
-        .qah-chip.gold{background:var(--qah-gold-soft);color:#B8761A}.qah-chip.teal{background:var(--qah-teal-soft);color:var(--qah-teal)}.qah-chip.coral{background:var(--qah-coral-soft);color:var(--qah-coral)}.qah-chip.blue{background:var(--qah-blue-soft);color:var(--qah-blue)}.qah-chip.violet{background:var(--qah-violet-soft);color:var(--qah-violet)}.qah-chip.err{background:#F6D7D0;color:var(--qah-err)}
-        .qah-group-title{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--qah-ink);margin:2px 0 10px}
-        .qah-group-title .qah-chip{width:22px;height:22px;border-radius:6px}.qah-group-title .qah-chip .qah-ic{width:13px;height:13px}
-        .qah-tab.active{color:var(--qah-ink);font-weight:600;border-bottom-color:var(--qah-gold)}
-        .qah-tab:hover{color:var(--qah-ink)}
-        .qah-section{padding:14px 16px;overflow-y:auto;flex:1}
-        .qah-field{margin-bottom:12px}
-        .qah-field label{display:block;font-size:12px;font-weight:500;color:var(--qah-text);margin-bottom:4px}
-        .qah-field input,.qah-field select,.qah-field textarea{width:100%;padding:8px 10px;border:1px solid var(--qah-line);border-radius:6px;font-size:13px;color:var(--qah-text);background:var(--qah-bg);outline:none;box-sizing:border-box;font-family:inherit}
-        .qah-field input:focus,.qah-field select:focus,.qah-field textarea:focus{border-color:var(--qah-ink);box-shadow:0 0 0 3px var(--qah-gold-soft)}
-        .qah-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;padding:7px 14px;border-radius:6px;border:1px solid var(--qah-ink);background:var(--qah-ink);color:#fff;font-size:12px;cursor:pointer;font-weight:500;font-family:inherit;transition:background .15s,border-color .15s}
-        .qah-btn:hover{background:var(--qah-ink-2);border-color:var(--qah-ink-2)}
-        .qah-btn.accent{background:var(--qah-gold);border-color:var(--qah-gold);color:var(--qah-ink);font-weight:600}
-        .qah-btn.accent:hover{background:#E99A22;border-color:#E99A22}
-        .qah-btn.secondary{background:var(--qah-bg);color:var(--qah-text);border-color:var(--qah-line)}
-        .qah-btn .qah-ic{width:14px;height:14px}
-        .qah-btn.secondary .qah-ic{color:var(--qah-teal)}
-        .qah-btn.secondary:hover{background:var(--qah-soft)}
-        .qah-btn.danger{background:var(--qah-bg);color:var(--qah-err);border-color:var(--qah-line)}
-        .qah-btn.danger:hover{background:var(--qah-err-soft);border-color:#F0C9C1}
-        .qah-pdf-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;background:var(--qah-bg);transition:border-color .15s;border:1px solid var(--qah-line);border-radius:6px;margin-bottom:6px;font-size:12px}
-        .qah-pdf-item:hover{border-color:#D8CDB8}
-        .qah-pdf-item .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        .qah-pdf-item .meta{color:var(--qah-muted);font-size:11px;background:var(--qah-soft);padding:2px 8px;border-radius:999px}
-        .qah-empty{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--qah-muted);text-align:center;padding:18px;border:1px dashed var(--qah-line);border-radius:8px;font-size:12px}
-        .qah-empty .qah-chip{width:40px;height:40px;border-radius:12px}.qah-empty .qah-chip .qah-ic{width:20px;height:20px}
-        .qah-status{display:flex;align-items:center;gap:6px}.qah-status:empty{display:none}
-        .qah-answer-head{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--qah-ink);margin:-2px 0 10px;padding-bottom:10px;border-bottom:1px dashed var(--qah-line)}
-        .qah-answer-head .qah-chip{width:22px;height:22px;border-radius:6px}.qah-answer-head .qah-chip .qah-ic{width:13px;height:13px}
-        .qah-answer-box{background:var(--qah-paper);border:1px solid var(--qah-line);border-left:3px solid var(--qah-gold);border-radius:8px;padding:12px 14px;margin-top:10px;line-height:1.7;font-size:13px}
-        .qah-answer-box p{margin:0 0 8px}
-        .qah-answer-box ul,.qah-answer-box ol{margin:4px 0;padding-left:20px}
-        .qah-answer-box code{background:var(--qah-soft);padding:1px 4px;border-radius:3px;font-size:12px}
-        .qah-answer-box pre{background:var(--qah-soft);color:var(--qah-text);border:1px solid var(--qah-line);padding:10px 12px;border-radius:6px;overflow-x:auto;font-size:12px}
-        .qah-answer-box pre code{background:none;padding:0;color:inherit}
-        .qah-answer-box strong{font-weight:600;color:var(--qah-ink)}
-        .qah-answer-box.error{background:var(--qah-err-soft);border-color:#F0C9C1;border-left-color:var(--qah-err);color:var(--qah-err)}
-        .qah-loading{text-align:center;padding:20px;color:var(--qah-muted)}
-        .qah-loading::after{content:'';display:inline-block;width:14px;height:14px;border:2px solid var(--qah-line);border-top-color:var(--qah-gold);border-radius:50%;animation:qahspin 0.8s linear infinite;margin-left:8px;vertical-align:middle}
-        @keyframes qahspin{to{transform:rotate(360deg)}}
-        @media (prefers-reduced-motion:reduce){#qah-btn,#qah-panel *{transition:none!important}.qah-logo *{animation:none!important}.qah-logo .qah-tick{stroke-dashoffset:0!important}.qah-loading::after{animation-duration:2s}}
-        #qah-question-preview{display:flex;align-items:flex-start;gap:10px;background:var(--qah-paper);border:1px dashed var(--qah-line);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;max-height:120px;overflow-y:auto;line-height:1.6;color:var(--qah-muted)}
-        #qah-question-preview .qah-chip{margin-top:-2px}
-        #qah-question-preview .qah-preview-text{flex:1;padding-top:3px}
-    `;
-    document.head.appendChild(style);
-
     // ===== UI =====
     const btn = document.createElement('button');
     btn.id = 'qah-btn';
-    // Logo: an answer sheet with three options; the gold bubble ticks the picked answer, sparkle = AI.
-    // Animated via CSS (see .qah-logo rules): idle sparkle twinkle, hover pop + tick redraw,
-    // and .qah-thinking (while askAI runs) where the bubble scans the options before settling.
-    const LOGO_SVG = '<svg class="qah-logo" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-        + '<circle class="qah-opt qah-opt-1" cx="5" cy="5" r="2.1" stroke="#FBF7EF" stroke-opacity=".45" stroke-width="1.6"/>'
-        + '<path class="qah-row qah-row-1" d="M10 5h7" stroke="#FBF7EF" stroke-opacity=".45" stroke-width="2"/>'
-        + '<path class="qah-row qah-row-2" d="M10.5 12h10" stroke="#FBF7EF" stroke-width="2.2"/>'
-        + '<circle class="qah-opt qah-opt-3" cx="5" cy="19" r="2.1" stroke="#FBF7EF" stroke-opacity=".45" stroke-width="1.6"/>'
-        + '<path class="qah-row qah-row-3" d="M10 19h5" stroke="#FBF7EF" stroke-opacity=".45" stroke-width="2"/>'
-        + '<circle class="qah-opt qah-opt-2" cx="5" cy="12" r="2.1" stroke="#FBF7EF" stroke-opacity=".45" stroke-width="1.6"/>'
-        + '<g class="qah-mark-pick"><circle cx="5" cy="12" r="3.3" fill="#F2A93B"/>'
-        + '<path class="qah-tick" d="M3.6 12.1l1 1 1.9-2.1" stroke="#1F2A44" stroke-width="1.5" pathLength="1"/></g>'
-        + '<path class="qah-spark" d="M20.5 2.2l.55 1.45 1.45.55-1.45.55-.55 1.45-.55-1.45-1.45-.55 1.45-.55z" fill="#F2A93B"/>'
-        + '</svg>';
     // Toggle the "thinking" animation on every logo instance (floating button + panel header)
     function setLogoThinking(on) {
         document.querySelectorAll('#qah-btn .qah-logo, #qah-panel .qah-logo').forEach(el => {
@@ -180,33 +73,8 @@
             if (!on) { el.classList.remove('qah-settle'); void el.getBoundingClientRect(); el.classList.add('qah-settle'); }
         });
     }
-    // Line icons (Lucide-style, 24 grid, stroke=currentColor); colour comes from the wrapping element
-    const ICON_PATHS = {
-        answer: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
-        docs: '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>',
-        config: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
-        support: '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M6 2v2M10 2v2M14 2v2"/>',
-        camera: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>',
-        sparkle: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
-        file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
-        search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
-        link: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
-        upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/>',
-        trash: '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
-        bulb: '<path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/>',
-        alert: '<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
-        check: '<path d="M20 6L9 17l-5-5"/>',
-        globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/>',
-        cpu: '<rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 9h6v6H9zM9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M1 15h4M19 9h4M19 15h4"/>',
-        shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
-        keyboard: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M8 16h8"/>',
-        heart: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>'
-    };
-    const icon = (name) => '<svg class="qah-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON_PATHS[name] + '</svg>';
-    const chip = (name, tone) => '<span class="qah-chip ' + tone + '">' + icon(name) + '</span>';
-    const groupTitle = (name, tone, text) => '<div class="qah-group-title">' + chip(name, tone) + '<span>' + text + '</span></div>';
-    // File-type chip colour: PDF coral, Word blue, text/markdown teal
-    const fileTone = (name) => /\.pdf$/i.test(name) ? 'coral' : /\.docx?$/i.test(name) ? 'blue' : 'teal';
+    // ===== Icons (defined in icons.js) =====
+    const { LOGO_SVG, ICON_PATHS, icon, chip, groupTitle, fileTone } = window.QAH_ICONS;
 
     btn.innerHTML = LOGO_SVG;
     btn.setAttribute('aria-label', 'Quiz AI Helper');
