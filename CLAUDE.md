@@ -14,6 +14,7 @@ Quiz AI Helper — Chrome 扩展 (Manifest V3)，加载参考文档后 AI 根据
 - `images/icons/` — 扩展图标（16/32/48/128），由 `icons.js` 里的 `LOGO_SVG` 渲染而来；改 logo 时同步重新导出。logo 动画纯 CSS（`styles.css` 里 `.qah-logo` 规则）：待机星光闪烁 / hover 弹出 / `setLogoThinking()` 在 `askAI()` 期间让金色圆点扫描选项，结束时落定打勾
 - 配色「墨蓝 + 金盏黄」：CSS 变量定义在 `styles.css` 的 `#qah-btn,#qah-panel{--qah-*}`（`--qah-ink` #1F2A44 主色 / `--qah-gold` #F2A93B 强调 / `--qah-paper` #FBF7EF 纸色），组件里不要写裸 hex；辅助色 teal/blue/violet/coral（各带 `-soft` 底色）只用于图标色块
 - 图标：`ICON_PATHS` + `icon(name)` / `chip(name, tone)` / `groupTitle()`（`icons.js`），线性图标 stroke=currentColor，不用 emoji
+  - SVG 有意内联在 `icons.js` 里，**不要拆成 .svg 文件**：`<img>` 引用会让 `currentColor` 变色和 logo 的 CSS 动画失效；运行时 fetch 会变成异步，与面板同步挂载冲突，还得加进 `web_accessible_resources`，网页就能探测到扩展
 - `lib/` — pdf.js / marked / mammoth，**按需注入**（不在 content_scripts 中），通过 `chrome.scripting.executeScript`（ISOLATED world，与 content script 共享全局）
 
 ## 关键约定
