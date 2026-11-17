@@ -101,9 +101,7 @@ Leave it empty to enable all sites again.
 ├── background.js      # Service Worker: screenshots, API request proxy
 ├── _locales/          # Store name and description (zh_CN / en)
 ├── lib/               # Third-party libraries (pdf.js / marked / mammoth)
-├── images/            # Image assets
-├── icon48.png         # Extension icons
-└── icon128.png
+└── images/            # Images: icons/ (extension icons), screenshots/, donation QR
 ```
 
 ## Support

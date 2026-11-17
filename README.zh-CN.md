@@ -99,9 +99,7 @@ develop.*.com
 ├── background.js      # Service Worker：截图、API 请求代理
 ├── _locales/          # 商店名称与描述（zh_CN / en）
 ├── lib/               # 第三方库（pdf.js / marked / mammoth）
-├── images/            # 图片资源
-├── icon48.png         # 扩展图标
-└── icon128.png
+└── images/            # 图片：icons/（扩展图标）、screenshots/、赞赏码
 ```
 
 ## 支持
