@@ -71,8 +71,27 @@
         #qah-btn:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(31,42,68,.2),0 10px 22px rgba(31,42,68,.28)}
         #qah-btn:active{transform:translateY(0)}
         #qah-btn svg{width:30px;height:30px;display:block}
-        #qah-btn .qah-mark-pick{transform-origin:5px 12px;transform-box:view-box;transition:transform .18s ease}
-        #qah-btn:hover .qah-mark-pick{transform:scale(1.15)}
+        .qah-logo .qah-mark-pick{transform-box:view-box;transform-origin:5px 12px}
+        .qah-logo .qah-spark{transform-box:view-box;transform-origin:20.5px 4.2px;animation:qahTwinkle 4s ease-in-out infinite}
+        .qah-logo .qah-tick{stroke-dasharray:1;stroke-dashoffset:0}
+        .qah-logo .qah-row{transition:stroke-opacity .2s}
+        #qah-btn:hover .qah-logo:not(.qah-thinking) .qah-mark-pick{animation:qahPop .35s cubic-bezier(.3,1.6,.5,1)}
+        #qah-btn:hover .qah-logo:not(.qah-thinking) .qah-tick{animation:qahTick .35s ease-out .1s both}
+        .qah-logo.qah-thinking .qah-mark-pick{animation:qahScan 1.4s cubic-bezier(.65,0,.35,1) infinite}
+        .qah-logo.qah-thinking .qah-tick{stroke-dashoffset:1;transition:none}
+        .qah-logo.qah-thinking .qah-spark{animation:qahSpin 1.4s linear infinite}
+        .qah-logo.qah-thinking .qah-row-1{animation:qahRow 1.4s infinite}
+        .qah-logo.qah-thinking .qah-row-3{animation:qahRow 1.4s infinite .7s}
+        .qah-logo.qah-thinking .qah-row-2{animation:qahRowMid 1.4s infinite}
+        .qah-logo.qah-settle .qah-mark-pick{animation:qahPop .4s cubic-bezier(.3,1.6,.5,1)}
+        .qah-logo.qah-settle .qah-tick{animation:qahTick .4s ease-out .15s both}
+        @keyframes qahTwinkle{0%,80%,100%{transform:scale(1) rotate(0);opacity:1}88%{transform:scale(1.45) rotate(45deg);opacity:.75}}
+        @keyframes qahSpin{0%{transform:rotate(0) scale(1.2)}50%{transform:rotate(180deg) scale(.8)}100%{transform:rotate(360deg) scale(1.2)}}
+        @keyframes qahPop{0%{transform:scale(.6)}100%{transform:scale(1)}}
+        @keyframes qahTick{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+        @keyframes qahScan{0%,100%{transform:translateY(0)}20%,30%{transform:translateY(-7px)}70%,80%{transform:translateY(7px)}}
+        @keyframes qahRow{0%,15%,35%,100%{stroke-opacity:.45}25%{stroke-opacity:1}}
+        @keyframes qahRowMid{0%,45%,55%,100%{stroke-opacity:1}15%,35%,65%,85%{stroke-opacity:.45}}
         #qah-panel{position:fixed;top:50%;right:20px;transform:translateY(-50%);z-index:2147483646;width:560px;max-width:calc(100vw - 40px);max-height:85vh;background:var(--qah-bg);border:1px solid var(--qah-line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.12);display:none;flex-direction:column;font-family:-apple-system,system-ui,"PingFang SC","Microsoft YaHei",sans-serif;font-size:13px;color:var(--qah-text);accent-color:var(--qah-ink);overflow:hidden}
         #qah-panel.show{display:flex}
         #qah-btn:focus-visible,#qah-panel :focus-visible{outline:2px solid var(--qah-ink);outline-offset:2px}
@@ -130,7 +149,7 @@
         .qah-loading{text-align:center;padding:20px;color:var(--qah-muted)}
         .qah-loading::after{content:'';display:inline-block;width:14px;height:14px;border:2px solid var(--qah-line);border-top-color:var(--qah-gold);border-radius:50%;animation:qahspin 0.8s linear infinite;margin-left:8px;vertical-align:middle}
         @keyframes qahspin{to{transform:rotate(360deg)}}
-        @media (prefers-reduced-motion:reduce){#qah-btn,#qah-panel *{transition:none!important}.qah-loading::after{animation-duration:2s}}
+        @media (prefers-reduced-motion:reduce){#qah-btn,#qah-panel *{transition:none!important}.qah-logo *{animation:none!important}.qah-logo .qah-tick{stroke-dashoffset:0!important}.qah-loading::after{animation-duration:2s}}
         #qah-question-preview{display:flex;align-items:flex-start;gap:10px;background:var(--qah-paper);border:1px dashed var(--qah-line);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;max-height:120px;overflow-y:auto;line-height:1.6;color:var(--qah-muted)}
         #qah-question-preview .qah-chip{margin-top:-2px}
         #qah-question-preview .qah-preview-text{flex:1;padding-top:3px}
@@ -140,17 +159,27 @@
     // ===== UI =====
     const btn = document.createElement('button');
     btn.id = 'qah-btn';
-    // Logo: an answer sheet with three options; the middle bubble is ticked in gold (the picked answer), sparkle = AI
-    const LOGO_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-        + '<circle cx="5" cy="5" r="2.1" stroke="#FBF7EF" stroke-opacity=".45" stroke-width="1.6"/>'
-        + '<path d="M10 5h7" stroke="#FBF7EF" stroke-opacity=".45" stroke-width="2"/>'
+    // Logo: an answer sheet with three options; the gold bubble ticks the picked answer, sparkle = AI.
+    // Animated via CSS (see .qah-logo rules): idle sparkle twinkle, hover pop + tick redraw,
+    // and .qah-thinking (while askAI runs) where the bubble scans the options before settling.
+    const LOGO_SVG = '<svg class="qah-logo" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        + '<circle class="qah-opt qah-opt-1" cx="5" cy="5" r="2.1" stroke="#FBF7EF" stroke-opacity=".45" stroke-width="1.6"/>'
+        + '<path class="qah-row qah-row-1" d="M10 5h7" stroke="#FBF7EF" stroke-opacity=".45" stroke-width="2"/>'
+        + '<path class="qah-row qah-row-2" d="M10.5 12h10" stroke="#FBF7EF" stroke-width="2.2"/>'
+        + '<circle class="qah-opt qah-opt-3" cx="5" cy="19" r="2.1" stroke="#FBF7EF" stroke-opacity=".45" stroke-width="1.6"/>'
+        + '<path class="qah-row qah-row-3" d="M10 19h5" stroke="#FBF7EF" stroke-opacity=".45" stroke-width="2"/>'
+        + '<circle class="qah-opt qah-opt-2" cx="5" cy="12" r="2.1" stroke="#FBF7EF" stroke-opacity=".45" stroke-width="1.6"/>'
         + '<g class="qah-mark-pick"><circle cx="5" cy="12" r="3.3" fill="#F2A93B"/>'
-        + '<path d="M3.6 12.1l1 1 1.9-2.1" stroke="#1F2A44" stroke-width="1.5"/></g>'
-        + '<path d="M10.5 12h10" stroke="#FBF7EF" stroke-width="2.2"/>'
-        + '<circle cx="5" cy="19" r="2.1" stroke="#FBF7EF" stroke-opacity=".45" stroke-width="1.6"/>'
-        + '<path d="M10 19h5" stroke="#FBF7EF" stroke-opacity=".45" stroke-width="2"/>'
-        + '<path d="M20.5 2.2l.55 1.45 1.45.55-1.45.55-.55 1.45-.55-1.45-1.45-.55 1.45-.55z" fill="#F2A93B"/>'
+        + '<path class="qah-tick" d="M3.6 12.1l1 1 1.9-2.1" stroke="#1F2A44" stroke-width="1.5" pathLength="1"/></g>'
+        + '<path class="qah-spark" d="M20.5 2.2l.55 1.45 1.45.55-1.45.55-.55 1.45-.55-1.45-1.45-.55 1.45-.55z" fill="#F2A93B"/>'
         + '</svg>';
+    // Toggle the "thinking" animation on every logo instance (floating button + panel header)
+    function setLogoThinking(on) {
+        document.querySelectorAll('#qah-btn .qah-logo, #qah-panel .qah-logo').forEach(el => {
+            el.classList.toggle('qah-thinking', on);
+            if (!on) { el.classList.remove('qah-settle'); void el.getBoundingClientRect(); el.classList.add('qah-settle'); }
+        });
+    }
     // Line icons (Lucide-style, 24 grid, stroke=currentColor); colour comes from the wrapping element
     const ICON_PATHS = {
         answer: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
@@ -933,6 +962,7 @@
         }
         const userText = userTextParts.join('\n');
 
+        setLogoThinking(true);
         try {
             let answer;
             if (config.provider === 'openai') {
@@ -944,6 +974,8 @@
             answerArea.innerHTML = `<div class="qah-answer-box"><div class="qah-answer-head">${chip('answer', 'gold')}<span>${t('answerTitle')}</span></div>${renderMarkdown(answer)}</div>`;
         } catch(e) {
             answerArea.innerHTML = `<div class="qah-answer-box error">${e.message}</div>`;
+        } finally {
+            setLogoThinking(false);
         }
     }
 
