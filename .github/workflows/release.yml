@@ -1,7 +1,7 @@
 name: Release
 
 # Push a tag matching package.json's version to publish, e.g.:
-#   npm version 3.5.0 --no-git-tag-version && git commit -am "chore: v3.5.0" && git tag v3.5.0 && git push --follow-tags
+#   npm version 0.2.0 --no-git-tag-version && git commit -am "chore: v0.2.0" && git tag v0.2.0 && git push --follow-tags
 on:
   push:
     tags: ['v*']

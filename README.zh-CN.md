@@ -49,9 +49,9 @@
 每次 push 和 PR 都会由 GitHub Actions 自动构建并检查。要发布新版本，先改版本号再推送对应的 tag，工作流会把 Chrome / Firefox / Edge 的 zip 附加到 GitHub Release：
 
 ```bash
-npm version 3.5.0 --no-git-tag-version
-git commit -am "chore: v3.5.0"
-git tag v3.5.0 && git push --follow-tags
+npm version 0.2.0 --no-git-tag-version
+git commit -am "chore: v0.2.0"
+git tag v0.2.0 && git push --follow-tags
 ```
 
 ## 使用

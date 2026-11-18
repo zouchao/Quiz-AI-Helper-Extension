@@ -49,9 +49,9 @@ Run `npm run dev` (or `npm run dev:firefox`), then load `.output/chrome-mv3-dev`
 Every push and PR is built and checked by GitHub Actions. To publish a release, bump the version and push a matching tag; the workflow attaches the Chrome / Firefox / Edge zips to a GitHub Release:
 
 ```bash
-npm version 3.5.0 --no-git-tag-version
-git commit -am "chore: v3.5.0"
-git tag v3.5.0 && git push --follow-tags
+npm version 0.2.0 --no-git-tag-version
+git commit -am "chore: v0.2.0"
+git tag v0.2.0 && git push --follow-tags
 ```
 
 ## Usage
