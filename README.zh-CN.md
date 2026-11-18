@@ -44,6 +44,16 @@
 
 运行 `npm run dev`（或 `npm run dev:firefox`），然后把 `.output/chrome-mv3-dev`（或 `firefox-mv3-dev`）作为已解压扩展加载一次，之后改代码会自动重新构建并重载扩展。`npm run zip` / `npm run zip:firefox` 在 `.output/` 下生成可上传商店的 zip。
 
+### 发布
+
+每次 push 和 PR 都会由 GitHub Actions 自动构建并检查。要发布新版本，先改版本号再推送对应的 tag，工作流会把 Chrome / Firefox / Edge 的 zip 附加到 GitHub Release：
+
+```bash
+npm version 3.5.0 --no-git-tag-version
+git commit -am "chore: v3.5.0"
+git tag v3.5.0 && git push --follow-tags
+```
+
 ## 使用
 
 ### 1. 打开面板

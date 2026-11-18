@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Chrome / Edge / Opera / Brave share the chrome-mv3 build
+      - name: Build Chrome
+        run: npm run zip
+
+      - name: Build Firefox
+        run: npm run zip:firefox
+
+      # Mozilla's validator; fails only on errors (warnings come from innerHTML and bundled pdf.js/mammoth)
+      - name: Lint Firefox build
+        run: npm run lint:firefox
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension-zips
+          path: .output/*.zip
+          if-no-files-found: error

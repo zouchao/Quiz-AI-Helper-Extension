@@ -44,6 +44,16 @@ A Chrome extension (Manifest V3): load reference documents, and the AI reads the
 
 Run `npm run dev` (or `npm run dev:firefox`), then load `.output/chrome-mv3-dev` (or `firefox-mv3-dev`) once as an unpacked extension; it rebuilds and reloads the extension on every change. `npm run zip` / `npm run zip:firefox` produce store-ready zips in `.output/`.
 
+### Releasing
+
+Every push and PR is built and checked by GitHub Actions. To publish a release, bump the version and push a matching tag; the workflow attaches the Chrome / Firefox / Edge zips to a GitHub Release:
+
+```bash
+npm version 3.5.0 --no-git-tag-version
+git commit -am "chore: v3.5.0"
+git tag v3.5.0 && git push --follow-tags
+```
+
 ## Usage
 
 > The screenshots below show the Chinese UI; the English UI has the same layout.
