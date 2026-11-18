@@ -13,6 +13,7 @@ A Chrome extension (Manifest V3): load reference documents, and the AI reads the
   - OpenAI and any compatible API (custom Base URL and model, default `gpt-4o`)
   - Anthropic Claude (default `claude-sonnet-4`)
 - 🈯 **English / 中文**: UI, prompts and store listing are bilingual. Follows the browser language by default and can be switched manually; the AI's answer language can follow the question (default), follow the UI, or be fixed to Chinese or English
+- ☁️ **Sync across devices** (optional): turn it on in Settings to sync your settings, API keys included, through your Chrome account. Requires Chrome sync with Extensions enabled; loaded documents are never synced
 - ⌨️ **Custom hotkeys**: `Alt+Q` toggles the panel and `Alt+A` takes a screenshot by default; changes apply immediately
 - 🌐 **Configurable domains**: enabled on all sites by default, or restrict it to specific domains (`*` wildcard supported)
 - 💬 **Rich answers**: Markdown rendering and code display

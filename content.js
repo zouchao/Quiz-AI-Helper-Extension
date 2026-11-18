@@ -52,15 +52,88 @@
         return str.replace(/\{(\d+)\}/g, (m, i) => (args[i] !== undefined ? args[i] : m));
     }
 
-    // Load config from chrome.storage
-    chrome.storage.local.get('qah_config', (result) => {
-        if (result.qah_config) Object.assign(config, result.qah_config);
-        renderAll(); // re-render with loaded values (initial render runs before storage callback)
+    // ===== Config storage =====
+    // `qah_config` lives in chrome.storage.sync when account sync is on, else in
+    // chrome.storage.local. The on/off choice is per device (local key `qah_sync`).
+    // Loaded documents are memory-only and never stored.
+    let syncEnabled = false;
+    const configArea = () => (syncEnabled ? chrome.storage.sync : chrome.storage.local);
+
+    chrome.storage.local.get(['qah_config', 'qah_sync'], (loc) => {
+        chrome.storage.sync.get('qah_config', (syn) => {
+            const synced = !chrome.runtime.lastError && syn && syn.qah_config;
+            // Never chosen on this device: follow sync if another device already uses it
+            syncEnabled = loc.qah_sync === undefined ? !!synced : !!loc.qah_sync;
+            if (loc.qah_sync === undefined && synced) chrome.storage.local.set({ qah_sync: true });
+            const stored = syncEnabled ? (synced || loc.qah_config) : loc.qah_config;
+            if (stored) Object.assign(config, stored);
+            // Sync on but nothing uploaded yet (e.g. sync data cleared): seed it from this device
+            if (syncEnabled && !synced && loc.qah_config) saveConfigToStorage();
+            renderAll(); // re-render with loaded values (initial render runs before storage callback)
+            applyDomainGate();
+        });
+    });
+
+    // Settings changed elsewhere (another tab, or another device via sync)
+    chrome.storage.onChanged.addListener((changes, area) => {
+        // Sync toggled in another tab: switch area and reload from it
+        if (area === 'local' && changes.qah_sync && !!changes.qah_sync.newValue !== syncEnabled) {
+            syncEnabled = !!changes.qah_sync.newValue;
+            configArea().get('qah_config', (r) => {
+                if (r && r.qah_config) Object.assign(config, r.qah_config);
+                renderAll();
+                applyDomainGate();
+            });
+            return;
+        }
+        if (area !== (syncEnabled ? 'sync' : 'local') || !changes.qah_config) return;
+        const next = changes.qah_config.newValue;
+        if (!next || JSON.stringify(next) === JSON.stringify(config)) return; // our own write
+        Object.assign(config, next);
+        renderAll();
         applyDomainGate();
     });
 
-    function saveConfigToStorage() {
-        chrome.storage.local.set({ qah_config: config });
+    function saveConfigToStorage(onDone) {
+        configArea().set({ qah_config: config }, () => {
+            const err = chrome.runtime.lastError; // e.g. sync quota exceeded
+            if (onDone) onDone(err);
+        });
+    }
+
+    // Toggle account sync. Turning it on adopts settings already in sync (so a second
+    // device picks up the first one's), otherwise uploads this device's settings.
+    // Turning it off keeps a local copy; the sync copy stays for other devices.
+    function setSyncEnabled(on) {
+        collectConfigFields();
+        const done = (msgKey) => (err) => {
+            const el = document.getElementById('qah-sync-status');
+            if (!el) return;
+            el.style.color = err ? 'var(--qah-err)' : 'var(--qah-ok)';
+            el.textContent = err ? t('saveFail', err.message) : t(msgKey);
+        };
+        if (!on) {
+            syncEnabled = false;
+            chrome.storage.local.set({ qah_sync: false });
+            saveConfigToStorage(done('syncOff'));
+            return;
+        }
+        chrome.storage.sync.get('qah_config', (syn) => {
+            if (chrome.runtime.lastError) {
+                document.getElementById('qah-sync-on').checked = false;
+                return done()(chrome.runtime.lastError);
+            }
+            syncEnabled = true;
+            chrome.storage.local.set({ qah_sync: true });
+            if (syn && syn.qah_config) {
+                Object.assign(config, syn.qah_config);
+                renderAll();
+                applyDomainGate();
+                done('syncPulled')();
+            } else {
+                saveConfigToStorage(done('syncOn'));
+            }
+        });
     }
 
     // ===== UI =====
@@ -416,6 +489,15 @@
                     <input id="qah-hotkey-screenshot" value="${config.hotkeyScreenshot}" placeholder="${t('hotkeyShotPh')}">
                 </div>
             </div>
+            <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--qah-line)">
+                ${groupTitle('cloud', 'teal', t('syncTitle'))}
+                <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px">
+                    <input type="checkbox" id="qah-sync-on" ${syncEnabled?'checked':''}>
+                    <span>${t('syncLabel')}</span>
+                </label>
+                <div style="font-size:11px;color:var(--qah-muted);margin:6px 0 0 20px;line-height:1.6">${t('syncHint')}</div>
+                <div id="qah-sync-status" style="font-size:11px;margin:4px 0 0 20px"></div>
+            </div>
             <button class="qah-btn" id="qah-save-config" style="margin-top:12px">${icon('check')}${t('saveBtn')}</button>
             <span id="qah-save-status" style="margin-left:10px;font-size:11px;color:var(--qah-ok)"></span>
         `;
@@ -438,6 +520,7 @@
         document.getElementById('qah-hotkey-toggle').onkeydown = captureHotkey;
         document.getElementById('qah-hotkey-screenshot').onkeydown = captureHotkey;
         document.getElementById('qah-save-config').onclick = saveConfig;
+        document.getElementById('qah-sync-on').onchange = (e) => setSyncEnabled(e.target.checked);
     }
 
     function renderProviderFields() {
@@ -591,13 +674,15 @@
 
     function saveConfig() {
         collectConfigFields();
-        saveConfigToStorage();
         applyDomainGate();
-        document.getElementById('qah-save-status').textContent = t('saved');
-        setTimeout(() => {
+        saveConfigToStorage((err) => {
             const el = document.getElementById('qah-save-status');
-            if (el) el.textContent = '';
-        }, 2000);
+            if (!el) return;
+            el.style.color = err ? 'var(--qah-err)' : 'var(--qah-ok)';
+            el.textContent = err ? t('saveFail', err.message) : t('saved');
+            if (err) return; // keep the error visible
+            setTimeout(() => { const s = document.getElementById('qah-save-status'); if (s) s.textContent = ''; }, 2000);
+        });
     }
 
     // ===== Lazy Library Loading =====
