@@ -1,6 +1,6 @@
-// UI + prompt dictionaries. Loaded before content.js (see manifest content_scripts).
+// UI + prompt dictionaries, imported by main.js.
 // Add new strings to BOTH zh and en.
-window.QAH_I18N = {
+export const I18N = {
     zh: {
         tabAnswer: '答题', tabDocs: '文档', tabConfig: '设置', tabSupport: '支持',
         docsLoaded: '已加载 {0} 个文档', pagesSuffix: ', {0} 页',

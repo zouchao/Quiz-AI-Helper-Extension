@@ -27,29 +27,42 @@
    git clone https://github.com/zouchao/Quiz-AI-Helper-Extension.git
    ```
 
-2. 打开 Chrome，访问 `chrome://extensions/`
-3. 开启右上角 **开发者模式**
-4. 点击 **加载已解压的扩展程序**，选择本仓库目录
+2. 安装依赖并构建（需要 Node.js 18+）：
+
+   ```bash
+   npm install
+   npm run build            # Chrome / Edge / Opera / Brave → .output/chrome-mv3
+   npm run build:firefox    # Firefox → .output/firefox-mv3
+   ```
+
+3. 打开 Chrome，访问 `chrome://extensions/`，开启右上角 **开发者模式**
+4. 点击 **加载已解压的扩展程序**，选择 `.output/chrome-mv3` 目录
+
+   Firefox：打开 `about:debugging#/runtime/this-firefox` → **临时载入附加组件** → 选择 `.output/firefox-mv3/manifest.json`
+
+### 开发
+
+运行 `npm run dev`（或 `npm run dev:firefox`），然后把 `.output/chrome-mv3-dev`（或 `firefox-mv3-dev`）作为已解压扩展加载一次，之后改代码会自动重新构建并重载扩展。`npm run zip` / `npm run zip:firefox` 在 `.output/` 下生成可上传商店的 zip。
 
 ## 使用
 
 ### 1. 打开面板
 
-安装后，在任意生效网站页面右下角会出现 🤖 悬浮按钮，点击（或按 `Alt+Q`）打开面板：
+安装后，在任意生效网站页面右下角会出现悬浮按钮，点击（或按 `Alt+Q`）打开面板：
 
-![悬浮按钮](images/screenshots/01-floating-button.png)
+![悬浮按钮](docs/screenshots/01-floating-button.png)
 
 ### 2. 配置 AI 服务商
 
 在 **设置** 标签中填入 API Key，选择模型（或点「刷新列表」拉取可用模型）；也可以在这里切换界面语言与 AI 回答语言、配置生效域名和快捷键：
 
-![设置标签](images/screenshots/04-config-tab.png)
+![设置标签](docs/screenshots/04-config-tab.png)
 
 ### 3. 加载参考文档（可选）
 
 在 **文档** 标签中上传本地文件（PDF / Word / TXT / Markdown）或粘贴链接，支持多选和网页链接自动识别：
 
-![文档标签](images/screenshots/03-docs-tab.png)
+![文档标签](docs/screenshots/03-docs-tab.png)
 
 也可以点 **扫描当前页面** 自动检测页面内嵌的 PDF（`iframe` / `embed` / 页面链接），一键加载为参考文档。跨域 iframe 中的 PDF 也能扫到：扩展会在每个 iframe 内运行并通过消息中继汇总结果（支持多层嵌套）。注意扫描时需等页面（含 iframe）完全加载。
 
@@ -63,7 +76,7 @@
 
 然后点击 **AI 作答** 获取答案：
 
-![答题标签](images/screenshots/02-answer-tab.png)
+![答题标签](docs/screenshots/02-answer-tab.png)
 
 ## 语言设置
 
@@ -91,16 +104,24 @@ develop.*.com
 
 ## 项目结构
 
+基于 [WXT](https://wxt.dev) 构建，manifest 由 `wxt.config.js` 按目标浏览器生成。
+
 ```
-├── manifest.json      # 扩展配置（Manifest V3）
-├── i18n.js            # 中 / 英文案与提示词词典
-├── icons.js           # Logo 与线性图标 SVG
-├── styles.css         # 面板样式
-├── content.js         # 内容脚本：UI 面板、答题逻辑
-├── background.js      # Service Worker：截图、API 请求代理
-├── _locales/          # 商店名称与描述（zh_CN / en）
-├── lib/               # 第三方库（pdf.js / marked / mammoth）
-└── images/            # 图片：icons/（扩展图标）、screenshots/、赞赏码
+├── wxt.config.js          # manifest 配置（按目标浏览器）
+├── package.json           # 版本号与构建脚本
+├── entrypoints/
+│   ├── background.js      # Service Worker：截图、API 请求代理
+│   └── content/
+│       ├── index.js       # 内容脚本入口（匹配规则 / frame）
+│       ├── main.js        # UI 面板、答题逻辑
+│       ├── i18n.js        # 中 / 英文案与提示词词典
+│       ├── icons.js       # Logo 与线性图标 SVG
+│       └── style.css      # 面板样式
+├── public/                # 原样复制进构建产物
+│   ├── _locales/          # 商店名称与描述（zh_CN / en）
+│   ├── lib/               # 第三方库（pdf.js / marked / mammoth）
+│   └── images/            # 扩展图标、赞赏码
+└── docs/screenshots/      # README 截图
 ```
 
 ## 支持
