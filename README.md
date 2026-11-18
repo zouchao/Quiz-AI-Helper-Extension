@@ -27,9 +27,22 @@ A Chrome extension (Manifest V3): load reference documents, and the AI reads the
    git clone https://github.com/zouchao/Quiz-AI-Helper-Extension.git
    ```
 
-2. Open Chrome and go to `chrome://extensions/`
-3. Turn on **Developer mode** (top right)
-4. Click **Load unpacked** and select the repository folder
+2. Install dependencies and build (requires Node.js 18+):
+
+   ```bash
+   npm install
+   npm run build            # Chrome / Edge / Opera / Brave → .output/chrome-mv3
+   npm run build:firefox    # Firefox → .output/firefox-mv3
+   ```
+
+3. Open Chrome and go to `chrome://extensions/`, turn on **Developer mode** (top right)
+4. Click **Load unpacked** and select `.output/chrome-mv3`
+
+   For Firefox: open `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → pick `.output/firefox-mv3/manifest.json`
+
+### Development
+
+Run `npm run dev` (or `npm run dev:firefox`), then load `.output/chrome-mv3-dev` (or `firefox-mv3-dev`) once as an unpacked extension; it rebuilds and reloads the extension on every change. `npm run zip` / `npm run zip:firefox` produce store-ready zips in `.output/`.
 
 ## Usage
 
@@ -37,21 +50,21 @@ A Chrome extension (Manifest V3): load reference documents, and the AI reads the
 
 ### 1. Open the panel
 
-After installing, a 🤖 floating button appears at the bottom right of any enabled page. Click it (or press `Alt+Q`) to open the panel:
+After installing, a floating button appears at the bottom right of any enabled page. Click it (or press `Alt+Q`) to open the panel:
 
-![Floating button](images/screenshots/01-floating-button.png)
+![Floating button](docs/screenshots/01-floating-button.png)
 
 ### 2. Configure the AI provider
 
 In the **Settings** tab, enter your API key and pick a model (or click Refresh to fetch the available ones). You can also set the interface language, the AI answer language, active domains and hotkeys here:
 
-![Settings tab](images/screenshots/04-config-tab.png)
+![Settings tab](docs/screenshots/04-config-tab.png)
 
 ### 3. Load reference documents (optional)
 
 In the **Docs** tab, upload local files (PDF / Word / TXT / Markdown) or paste a link. Multiple selection is supported, and web pages and PDFs are detected automatically:
 
-![Docs tab](images/screenshots/03-docs-tab.png)
+![Docs tab](docs/screenshots/03-docs-tab.png)
 
 You can also click **Scan this page** to detect PDFs embedded in the page (`iframe` / `embed` / links) and load them as references in one click. PDFs inside cross-origin iframes are found too: the extension runs inside each iframe and relays the results upward through messages (nested iframes are supported). Wait for the page, including its iframes, to finish loading before scanning.
 
@@ -65,7 +78,7 @@ Back in the **Answer** tab, pick any of three ways to provide the question:
 
 Then click **Ask AI** to get the answer:
 
-![Answer tab](images/screenshots/02-answer-tab.png)
+![Answer tab](docs/screenshots/02-answer-tab.png)
 
 ## Language settings
 
@@ -93,16 +106,24 @@ Leave it empty to enable all sites again.
 
 ## Project structure
 
+Built with [WXT](https://wxt.dev); the manifest is generated per browser from `wxt.config.js`.
+
 ```
-├── manifest.json      # Extension config (Manifest V3)
-├── i18n.js            # Chinese / English strings and prompt dictionaries
-├── icons.js           # Logo and line-icon SVGs
-├── styles.css         # Panel styles
-├── content.js         # Content script: UI panel, answering logic
-├── background.js      # Service Worker: screenshots, API request proxy
-├── _locales/          # Store name and description (zh_CN / en)
-├── lib/               # Third-party libraries (pdf.js / marked / mammoth)
-└── images/            # Images: icons/ (extension icons), screenshots/, donation QR
+├── wxt.config.js          # Manifest config (per target browser)
+├── package.json           # Version number and build scripts
+├── entrypoints/
+│   ├── background.js      # Service Worker: screenshots, API request proxy
+│   └── content/
+│       ├── index.js       # Content script entry (matches / frames)
+│       ├── main.js        # UI panel, answering logic
+│       ├── i18n.js        # Chinese / English strings and prompt dictionaries
+│       ├── icons.js       # Logo and line-icon SVGs
+│       └── style.css      # Panel styles
+├── public/                # Copied as-is into the build
+│   ├── _locales/          # Store name and description (zh_CN / en)
+│   ├── lib/               # Third-party libraries (pdf.js / marked / mammoth)
+│   └── images/            # Extension icons, donation QR
+└── docs/screenshots/      # README screenshots
 ```
 
 ## Support

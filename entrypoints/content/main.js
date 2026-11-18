@@ -1,5 +1,8 @@
-(function() {
-    'use strict';
+import { I18N } from './i18n.js';
+import { LOGO_SVG, ICON_PATHS, icon, chip, groupTitle, fileTone } from './icons.js';
+
+// Whole content-script body; called once per frame from index.js.
+export function main() {
 
     // ===== Subframe mode =====
     // In iframes we run headless: no UI, but we answer scan requests from the
@@ -40,7 +43,6 @@
     }, {});
 
     // ===== i18n =====
-    const I18N = window.QAH_I18N; // defined in i18n.js
 
     function uiLang() {
         if (config.language === 'zh' || config.language === 'en') return config.language;
@@ -146,8 +148,6 @@
             if (!on) { el.classList.remove('qah-settle'); void el.getBoundingClientRect(); el.classList.add('qah-settle'); }
         });
     }
-    // ===== Icons (defined in icons.js) =====
-    const { LOGO_SVG, ICON_PATHS, icon, chip, groupTitle, fileTone } = window.QAH_ICONS;
 
     btn.innerHTML = LOGO_SVG;
     btn.setAttribute('aria-label', 'Quiz AI Helper');
@@ -1059,4 +1059,4 @@
     }
 
     renderAll();
-})();
+}
