@@ -13,7 +13,7 @@ export const I18N = {
     btnAsk: "AI 作答",
     noDoc: "不依赖文档 (AI 根据自身知识回答)",
     needDocsWarn: "请先在「文档」标签加载参考资料，或勾选「不依赖文档」",
-    hint: "点击「截图作答」或直接 Ctrl+V 粘贴截图，也可在下方手动输入题目",
+    hint: "点击「截图」或直接 Ctrl+V 粘贴截图，也可在下方手动输入题目",
     clearShot: "清除截图",
     questionLabel: "题目 / 问题 (可手动编辑，截图模式下可留空)",
     questionPh: "在此输入题目内容...",
