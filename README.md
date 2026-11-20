@@ -4,6 +4,7 @@
 [![Release](https://github.com/zouchao/Quiz-AI-Helper-Extension/actions/workflows/release.yml/badge.svg)](https://github.com/zouchao/Quiz-AI-Helper-Extension/actions/workflows/release.yml)
 [![Latest release](https://img.shields.io/github/v/release/zouchao/Quiz-AI-Helper-Extension?label=version)](https://github.com/zouchao/Quiz-AI-Helper-Extension/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/zouchao/Quiz-AI-Helper-Extension/total)](https://github.com/zouchao/Quiz-AI-Helper-Extension/releases)
+[![License: GPL-3.0](https://img.shields.io/github/license/zouchao/Quiz-AI-Helper-Extension)](LICENSE)
 
 **English** | [中文](README.zh-CN.md)
 
@@ -132,6 +133,7 @@ Built with [WXT](https://wxt.dev); the manifest is generated per browser from `w
 ```
 ├── wxt.config.js          # Manifest config (per target browser)
 ├── package.json           # Version number and build scripts
+├── LICENSE                # GPL-3.0 (also copied into each build)
 ├── entrypoints/
 │   ├── background.js      # Service Worker: screenshots, API request proxy
 │   └── content/
@@ -154,3 +156,9 @@ If this project helps you, consider buying the author a coffee ☕ (see the **Su
 ## Author
 
 Sean Zou ([zouchao2008@gmail.com](mailto:zouchao2008@gmail.com))
+
+## License
+
+[GPL-3.0](LICENSE) © 2026 Sean Zou. You may use, modify and redistribute this project, but any distributed modified version must also be open source under GPL-3.0.
+
+Bundled third-party libraries keep their own licenses: [pdf.js](https://github.com/mozilla/pdf.js) (Apache-2.0), [marked](https://github.com/markedjs/marked) (MIT), [mammoth](https://github.com/mwilliamson/mammoth.js) (BSD-2-Clause).

@@ -7,6 +7,7 @@ Quiz AI Helper — 浏览器扩展 (Manifest V3，基于 [WXT](https://wxt.dev) 
 - `npm install` 后：`npm run dev`（热重载开发，`dev:firefox` 同理）/ `npm run build`（→ `.output/chrome-mv3`）/ `npm run build:firefox`（→ `.output/firefox-mv3`）/ `npm run zip[:firefox]`（商店包）
 - **没有手写 manifest.json**：由 `wxt.config.js` 生成；content script 的 matches/allFrames/runAt 在 `entrypoints/content/index.js` 的 `defineContentScript()` 里。Firefox 专属字段（`browser_specific_settings.gecko.id`）在 config 里按 `browser` 条件添加
 - 版本号只在 `package.json` 改
+- 许可证 GPL-3.0（根目录 `LICENSE`，`package.json` 的 `license: GPL-3.0-only`）；`wxt.config.js` 的 `build:publicAssets` hook 把 `LICENSE` 复制进每个构建产物，不要在 `public/` 再放一份
 - CI（`.github/workflows/ci.yml`）：push main / PR 时构建 Chrome + Firefox zip、跑 `npm run lint:firefox`（web-ext lint，只有 error 才失败），zip 作为 artifact 上传
 - 发布（`.github/workflows/release.yml`）：推 `v*` tag 触发，tag 必须等于 `v` + package.json 版本，否则失败；产出 chrome / firefox / edge / sources zip 并创建 GitHub Release。商店上传仍手动
 - `npm run dev` 不自动开浏览器（`wxt.config.js` 里 `webExt.disabled`，也没装 `web-ext`）：在自己的 Chrome 里加载一次 `.output/chrome-mv3-dev`，之后改代码会自动重建并重载

@@ -4,6 +4,7 @@
 [![Release](https://github.com/zouchao/Quiz-AI-Helper-Extension/actions/workflows/release.yml/badge.svg)](https://github.com/zouchao/Quiz-AI-Helper-Extension/actions/workflows/release.yml)
 [![Latest release](https://img.shields.io/github/v/release/zouchao/Quiz-AI-Helper-Extension?label=version)](https://github.com/zouchao/Quiz-AI-Helper-Extension/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/zouchao/Quiz-AI-Helper-Extension/total)](https://github.com/zouchao/Quiz-AI-Helper-Extension/releases)
+[![License: GPL-3.0](https://img.shields.io/github/license/zouchao/Quiz-AI-Helper-Extension)](LICENSE)
 
 **中文** | [English](README.md)
 
@@ -132,6 +133,7 @@ develop.*.com
 ```
 ├── wxt.config.js          # manifest 配置（按目标浏览器）
 ├── package.json           # 版本号与构建脚本
+├── LICENSE                # GPL-3.0（构建时也会复制进产物）
 ├── entrypoints/
 │   ├── background.js      # Service Worker：截图、API 请求代理
 │   └── content/
@@ -154,3 +156,9 @@ develop.*.com
 ## 作者
 
 Sean Zou ([zouchao2008@gmail.com](mailto:zouchao2008@gmail.com))
+
+## 许可证
+
+[GPL-3.0](LICENSE) © 2026 Sean Zou。可以自由使用、修改和再发布，但发布修改后的版本时也必须以 GPL-3.0 开源。
+
+打包的第三方库沿用各自的许可证：[pdf.js](https://github.com/mozilla/pdf.js)（Apache-2.0）、[marked](https://github.com/markedjs/marked)（MIT）、[mammoth](https://github.com/mwilliamson/mammoth.js)（BSD-2-Clause）。

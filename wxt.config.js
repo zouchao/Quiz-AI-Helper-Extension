@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { defineConfig } from 'wxt';
 
 // The manifest is generated per target browser (`wxt build -b chrome|firefox|edge|safari`).
@@ -5,6 +6,12 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
     // Don't launch a browser on `npm run dev`; load .output/chrome-mv3-dev into your own Chrome instead
     webExt: { disabled: true },
+    // GPL-3.0 requires shipping the license text: copy the repo-root LICENSE into every build
+    hooks: {
+        'build:publicAssets': (wxt, files) => {
+            files.push({ absoluteSrc: resolve(wxt.config.root, 'LICENSE'), relativeDest: 'LICENSE' });
+        },
+    },
     manifestVersion: 3,
     manifest: ({ browser }) => ({
         name: '__MSG_extName__',
