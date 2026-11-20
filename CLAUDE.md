@@ -26,6 +26,7 @@ Quiz AI Helper — 浏览器扩展 (Manifest V3，基于 [WXT](https://wxt.dev) 
 - `public/images/icons/` — 扩展图标（16/32/48/128），由 `icons.js` 里的 `LOGO_SVG` 渲染而来；改 logo 时同步重新导出。logo 动画纯 CSS（`style.css` 里 `.qah-logo` 规则）：待机星光闪烁 / hover 弹出 / `setLogoThinking()` 在 `askAI()` 期间让金色圆点扫描选项，结束时落定打勾
 - `docs/screenshots/` — README 截图（不打包进扩展）
 - 配色「墨蓝 + 金盏黄」：CSS 变量定义在 `style.css` 的 `#qah-btn,#qah-panel{--qah-*}`（`--qah-ink` #1F2A44 主色 / `--qah-gold` #F2A93B 强调 / `--qah-paper` #FBF7EF 纸色），组件里不要写裸 hex；辅助色 teal/blue/violet/coral（各带 `-soft` 底色）只用于图标色块
+- 明/暗配色：`config.theme`（auto/light/dark，auto 跟随 `prefers-color-scheme`）→ `applyTheme()` 给 `#qah-btn` / `#qah-panel` 设 `data-theme`，`style.css` 的 `[data-theme=dark]` 块只覆盖 `--qah-*` 变量。暗色下 `--qah-ink` 翻成浅色（标题/主按钮），logo 底色用 `--qah-brand`（始终墨蓝）；新增颜色必须两套都定义
 - 图标：`ICON_PATHS` + `icon(name)` / `chip(name, tone)` / `groupTitle()`（`icons.js`），线性图标 stroke=currentColor，不用 emoji
   - SVG 有意内联在 `icons.js` 里，**不要拆成 .svg 文件**：`<img>` 引用会让 `currentColor` 变色和 logo 的 CSS 动画失效；运行时 fetch 会变成异步，与面板同步挂载冲突，还得加进 `web_accessible_resources`，网页就能探测到扩展
 - `public/lib/` — pdf.js / marked / mammoth，**不经过打包、按需注入**（不在 content script bundle 里），通过 `chrome.scripting.executeScript({files:['lib/…']})`（ISOLATED world，与 content script 共享全局）；放 `public/` 是为了让运行时路径保持 `lib/xxx.js`

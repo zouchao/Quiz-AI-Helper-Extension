@@ -2,7 +2,7 @@
   "name": "quiz-ai-helper",
   "description": "Load reference documents, then let AI answer the quiz questions on the page based on them.",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "wxt",

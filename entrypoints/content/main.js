@@ -39,6 +39,7 @@ export function main() {
         hotkeyScreenshot: 'Alt+A',
         allowedDomains: '',
         language: 'auto',      // 'auto' | 'zh' | 'en' (UI + prompt language)
+        theme: 'auto',         // 'auto' | 'light' | 'dark' (auto follows prefers-color-scheme)
         answerLang: 'question' // 'question' | 'ui' | 'zh' | 'en'
     }, {});
 
@@ -53,6 +54,16 @@ export function main() {
         const str = (I18N[uiLang()][key] !== undefined ? I18N[uiLang()][key] : I18N.en[key]) || key;
         return str.replace(/\{(\d+)\}/g, (m, i) => (args[i] !== undefined ? args[i] : m));
     }
+
+    // ===== Theme =====
+    // Sets data-theme on #qah-btn / #qah-panel; style.css swaps the --qah-* tokens.
+    const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+    function applyTheme() {
+        const dark = config.theme === 'dark' || (config.theme !== 'light' && darkQuery.matches);
+        btn.dataset.theme = panel.dataset.theme = dark ? 'dark' : 'light';
+    }
+    darkQuery.addEventListener('change', () => { if (config.theme === 'auto') applyTheme(); });
 
     // ===== Config storage =====
     // `qah_config` lives in chrome.storage.sync when account sync is on, else in
@@ -459,6 +470,16 @@ export function main() {
                 </select>
             </div>
             <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--qah-line)">
+                ${groupTitle('moon', 'blue', t('themeLabel'))}
+                <div class="qah-field">
+                    <select id="qah-theme">
+                        <option value="auto" ${config.theme==='auto'?'selected':''}>${t('themeAuto')}</option>
+                        <option value="light" ${config.theme==='light'?'selected':''}>${t('themeLight')}</option>
+                        <option value="dark" ${config.theme==='dark'?'selected':''}>${t('themeDark')}</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--qah-line)">
                 ${groupTitle('shield', 'violet', t('domainsLabel'))}
                 <div class="qah-field">
                     <textarea id="qah-domains" rows="3" placeholder="${t('domainsPh')}"></textarea>
@@ -493,6 +514,11 @@ export function main() {
             config.language = e.target.value;
             saveConfigToStorage();
             renderAll();
+        };
+        document.getElementById('qah-theme').onchange = (e) => {
+            config.theme = e.target.value;
+            saveConfigToStorage();
+            applyTheme();
         };
         document.getElementById('qah-hotkey-toggle').onkeydown = captureHotkey;
         document.getElementById('qah-hotkey-screenshot').onkeydown = captureHotkey;
@@ -1064,6 +1090,7 @@ export function main() {
         const a = document.getElementById('qah-answer-area');
         const qVal = q ? q.value : '';
         const aHtml = a ? a.innerHTML : '';
+        applyTheme();
         tabEls.forEach(el => { el.querySelector('span').textContent = t('tab' + el.dataset.tab.charAt(0).toUpperCase() + el.dataset.tab.slice(1)); });
         renderAnswerTab();
         renderDocsTab();
