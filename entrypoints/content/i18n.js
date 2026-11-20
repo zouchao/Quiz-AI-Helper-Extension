@@ -2,7 +2,7 @@
 // Add new strings to BOTH zh and en.
 export const I18N = {
     zh: {
-        tabAnswer: '答题', tabDocs: '文档', tabConfig: '设置', tabSupport: '支持',
+        tabAnswer: '答题', tabDocs: '文档', tabAi: 'AI', tabConfig: '设置', tabSupport: '支持',
         docsLoaded: '已加载 {0} 个文档', pagesSuffix: ', {0} 页',
         btnScreenshot: '截图作答', btnAsk: 'AI 作答',
         noDoc: '不依赖文档 (AI 根据自身知识回答)',
@@ -52,8 +52,8 @@ export const I18N = {
         pasteOk: '✓ 已从剪贴板粘贴截图，点击「AI 作答」发送给AI',
         errNoQuestion: '请先输入题目或截取屏幕',
         errNoDocs: '请先在「文档」标签加载参考资料，或勾选「不依赖文档」',
-        errNoKey: '请先在「设置」中配置API Key',
-        errNoAntKey: '请先在「设置」中配置Anthropic API Key',
+        errNoKey: '请先在「AI」标签中配置 API Key',
+        errNoAntKey: '请先在「AI」标签中配置 Anthropic API Key',
         analyzing: 'AI 正在分析并作答...',
         docHeader: '===== 文档: {0} =====', pageMark: '[第{0}页]', truncated: '[...内容已截断...]',
         sysRole: '你是一个专业的考试助手。请根据你的知识回答用户的考试题目。',
@@ -77,7 +77,7 @@ export const I18N = {
         netFail: '网络请求失败', parseFail: '解析响应失败: {0}'
     },
     en: {
-        tabAnswer: 'Answer', tabDocs: 'Docs', tabConfig: 'Settings', tabSupport: 'Support',
+        tabAnswer: 'Answer', tabDocs: 'Docs', tabAi: 'AI', tabConfig: 'Settings', tabSupport: 'Support',
         docsLoaded: '{0} document(s) loaded', pagesSuffix: ', {0} pages',
         btnScreenshot: 'Screenshot', btnAsk: 'Ask AI',
         noDoc: 'No documents (AI answers from its own knowledge)',
@@ -127,8 +127,8 @@ export const I18N = {
         pasteOk: '✓ Screenshot pasted from clipboard. Click "Ask AI" to send it',
         errNoQuestion: 'Enter a question or take a screenshot first',
         errNoDocs: 'Load reference material in the "Docs" tab first, or tick "No documents"',
-        errNoKey: 'Set your API Key in "Settings" first',
-        errNoAntKey: 'Set your Anthropic API Key in "Settings" first',
+        errNoKey: 'Set your API key in the "AI" tab first',
+        errNoAntKey: 'Set your Anthropic API key in the "AI" tab first',
         analyzing: 'AI is analyzing and answering...',
         docHeader: '===== Document: {0} =====', pageMark: '[Page {0}]', truncated: '[...content truncated...]',
         sysRole: 'You are a professional exam assistant. Answer the user\'s exam questions using your own knowledge.',

@@ -164,11 +164,13 @@ export function main() {
         <div class="qah-tabs">
             <div class="qah-tab active" data-tab="answer">${icon('answer')}<span>${t('tabAnswer')}</span></div>
             <div class="qah-tab" data-tab="docs">${icon('docs')}<span>${t('tabDocs')}</span></div>
+            <div class="qah-tab" data-tab="ai">${icon('sparkle')}<span>${t('tabAi')}</span></div>
             <div class="qah-tab" data-tab="config">${icon('config')}<span>${t('tabConfig')}</span></div>
             <div class="qah-tab" data-tab="support">${icon('support')}<span>${t('tabSupport')}</span></div>
         </div>
         <div class="qah-section" id="qah-tab-answer"></div>
         <div class="qah-section" id="qah-tab-docs" style="display:none"></div>
+        <div class="qah-section" id="qah-tab-ai" style="display:none"></div>
         <div class="qah-section" id="qah-tab-config" style="display:none"></div>
         <div class="qah-section" id="qah-tab-support" style="display:none"></div>
     `;
@@ -224,6 +226,7 @@ export function main() {
     const tabContainers = {
         answer: document.getElementById('qah-tab-answer'),
         docs: document.getElementById('qah-tab-docs'),
+        ai: document.getElementById('qah-tab-ai'),
         config: document.getElementById('qah-tab-config'),
         support: document.getElementById('qah-tab-support')
     };
@@ -455,23 +458,6 @@ export function main() {
                     <option value="en" ${config.language==='en'?'selected':''}>English</option>
                 </select>
             </div>
-            <div class="qah-field">
-                <label>${t('answerLangLabel')}</label>
-                <select id="qah-answer-lang">
-                    <option value="question" ${config.answerLang==='question'?'selected':''}>${t('answerQuestion')}</option>
-                    <option value="ui" ${config.answerLang==='ui'?'selected':''}>${t('answerUi')}</option>
-                    <option value="zh" ${config.answerLang==='zh'?'selected':''}>中文</option>
-                    <option value="en" ${config.answerLang==='en'?'selected':''}>English</option>
-                </select>
-            </div>
-            ${groupTitle('cpu', 'blue', t('providerLabel'))}
-            <div class="qah-field">
-                <select id="qah-provider">
-                    <option value="openai" ${config.provider==='openai'?'selected':''}>${t('openaiOpt')}</option>
-                    <option value="anthropic" ${config.provider==='anthropic'?'selected':''}>Anthropic (Claude)</option>
-                </select>
-            </div>
-            <div id="qah-provider-fields"></div>
             <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--qah-line)">
                 ${groupTitle('shield', 'violet', t('domainsLabel'))}
                 <div class="qah-field">
@@ -501,7 +487,6 @@ export function main() {
             <button class="qah-btn" id="qah-save-config" style="margin-top:12px">${icon('check')}${t('saveBtn')}</button>
             <span id="qah-save-status" style="margin-left:10px;font-size:11px;color:var(--qah-ok)"></span>
         `;
-        renderProviderFields();
         document.getElementById('qah-domains').value = config.allowedDomains || '';
         document.getElementById('qah-language').onchange = (e) => {
             collectConfigFields(); // keep unsaved edits before the tab is rebuilt
@@ -509,6 +494,39 @@ export function main() {
             saveConfigToStorage();
             renderAll();
         };
+        document.getElementById('qah-hotkey-toggle').onkeydown = captureHotkey;
+        document.getElementById('qah-hotkey-screenshot').onkeydown = captureHotkey;
+        document.getElementById('qah-save-config').onclick = () => saveConfig('qah-save-status');
+        document.getElementById('qah-sync-on').onchange = (e) => setSyncEnabled(e.target.checked);
+    }
+
+    // AI tab: provider, endpoint / key / model, answer language. Has its own save
+    // button; saving collects every field on both tabs (all tabs stay in the DOM).
+    function renderAiTab() {
+        tabContainers.ai.innerHTML = `
+            ${groupTitle('cpu', 'blue', t('providerLabel'))}
+            <div class="qah-field">
+                <select id="qah-provider">
+                    <option value="openai" ${config.provider==='openai'?'selected':''}>${t('openaiOpt')}</option>
+                    <option value="anthropic" ${config.provider==='anthropic'?'selected':''}>Anthropic (Claude)</option>
+                </select>
+            </div>
+            <div id="qah-provider-fields"></div>
+            <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--qah-line)">
+                ${groupTitle('globe', 'teal', t('answerLangLabel'))}
+                <div class="qah-field">
+                    <select id="qah-answer-lang">
+                        <option value="question" ${config.answerLang==='question'?'selected':''}>${t('answerQuestion')}</option>
+                        <option value="ui" ${config.answerLang==='ui'?'selected':''}>${t('answerUi')}</option>
+                        <option value="zh" ${config.answerLang==='zh'?'selected':''}>中文</option>
+                        <option value="en" ${config.answerLang==='en'?'selected':''}>English</option>
+                    </select>
+                </div>
+            </div>
+            <button class="qah-btn" id="qah-save-ai" style="margin-top:12px">${icon('check')}${t('saveBtn')}</button>
+            <span id="qah-save-ai-status" style="margin-left:10px;font-size:11px;color:var(--qah-ok)"></span>
+        `;
+        renderProviderFields();
         document.getElementById('qah-answer-lang').onchange = (e) => {
             config.answerLang = e.target.value;
             saveConfigToStorage();
@@ -517,10 +535,7 @@ export function main() {
             config.provider = e.target.value;
             renderProviderFields();
         };
-        document.getElementById('qah-hotkey-toggle').onkeydown = captureHotkey;
-        document.getElementById('qah-hotkey-screenshot').onkeydown = captureHotkey;
-        document.getElementById('qah-save-config').onclick = saveConfig;
-        document.getElementById('qah-sync-on').onchange = (e) => setSyncEnabled(e.target.checked);
+        document.getElementById('qah-save-ai').onclick = () => saveConfig('qah-save-ai-status');
     }
 
     function renderProviderFields() {
@@ -672,16 +687,16 @@ export function main() {
         config.allowedDomains = document.getElementById('qah-domains').value.trim();
     }
 
-    function saveConfig() {
+    function saveConfig(statusId) {
         collectConfigFields();
         applyDomainGate();
         saveConfigToStorage((err) => {
-            const el = document.getElementById('qah-save-status');
+            const el = document.getElementById(statusId);
             if (!el) return;
             el.style.color = err ? 'var(--qah-err)' : 'var(--qah-ok)';
             el.textContent = err ? t('saveFail', err.message) : t('saved');
             if (err) return; // keep the error visible
-            setTimeout(() => { const s = document.getElementById('qah-save-status'); if (s) s.textContent = ''; }, 2000);
+            setTimeout(() => { const s = document.getElementById(statusId); if (s) s.textContent = ''; }, 2000);
         });
     }
 
@@ -1052,6 +1067,7 @@ export function main() {
         tabEls.forEach(el => { el.querySelector('span').textContent = t('tab' + el.dataset.tab.charAt(0).toUpperCase() + el.dataset.tab.slice(1)); });
         renderAnswerTab();
         renderDocsTab();
+        renderAiTab();
         renderConfigTab();
         renderSupportTab();
         document.getElementById('qah-question').value = qVal;

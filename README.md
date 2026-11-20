@@ -66,7 +66,7 @@ After installing, a floating button appears at the bottom right of any enabled p
 
 ### 2. Configure the AI provider
 
-In the **Settings** tab, enter your API key and pick a model (or click Refresh to fetch the available ones). You can also set the interface language, the AI answer language, active domains and hotkeys here:
+In the **AI** tab, choose the provider, enter your API key and pick a model (or click Refresh to fetch the available ones); the AI answer language is set here too. The **Settings** tab holds the interface language, active domains, hotkeys and sync:
 
 ![Settings tab](docs/screenshots/04-config-tab.png)
 
@@ -92,10 +92,10 @@ Then click **Ask AI** to get the answer:
 
 ## Language settings
 
-At the top of the **Settings** tab:
+Two separate options:
 
-- **Interface language**: Auto (follows the browser: Chinese browsers get 中文, everything else gets English) / 中文 / English. Takes effect immediately for the panel and prompts; your typed question and the last answer are kept.
-- **AI answer language**: Match the question (default: English question → English answer, Chinese question → Chinese answer, option text unchanged) / Match interface language / 中文 / English.
+- **Interface language** (**Settings** tab): Auto (follows the browser: Chinese browsers get 中文, everything else gets English) / 中文 / English. Takes effect immediately for the panel and prompts; your typed question and the last answer are kept.
+- **AI answer language** (**AI** tab): Match the question (default: English question → English answer, Chinese question → Chinese answer, option text unchanged) / Match interface language / 中文 / English.
 
 ## Active domains
 

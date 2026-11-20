@@ -40,6 +40,7 @@ Quiz AI Helper — 浏览器扩展 (Manifest V3，基于 [WXT](https://wxt.dev) 
 - 后台代理的库注入有白名单（`ALLOWED_LIBS`），新增库要同步改
 - i18n（中/英）：所有面板文案和提示词都在 `entrypoints/content/i18n.js`（`I18N.zh` / `.en`）里，用 `t(key, ...args)` 读取（占位符 `{0}`）；新增文案必须两套同时加。`config.language`（auto/zh/en）决定界面和提示词语言，auto 按 `navigator.language` 判断；`config.answerLang`（question/ui/zh/en）决定 AI 回答语言，默认跟随题目。切换语言走 `renderAll()`（会保留已输入的题目和答案）。商店名称/描述在 `public/_locales/*/messages.json`，`wxt.config.js` 用 `__MSG_*__` 引用
 - AI 服务商两种：`openai`（兼容任意 `/chat/completions` 端点）和 `anthropic`（原生 Messages API）
+- 面板标签：答题 / 文档 / **AI**（`renderAiTab()`：服务商、Base URL、Key、模型、回答语言）/ 设置（`renderConfigTab()`：界面语言、生效域名、快捷键、同步）/ 支持。AI 和设置各有保存按钮，都调 `saveConfig(statusId)`；`collectConfigFields()` 会同时读两个标签的输入框（隐藏的标签仍在 DOM 中），所以任一保存都会保存全部
 
 ## TODO / Feature Ideas
 
