@@ -1,5 +1,10 @@
 # Quiz AI Helper - AI 做题助手
 
+[![CI](https://github.com/zouchao/Quiz-AI-Helper-Extension/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/zouchao/Quiz-AI-Helper-Extension/actions/workflows/ci.yml)
+[![Release](https://github.com/zouchao/Quiz-AI-Helper-Extension/actions/workflows/release.yml/badge.svg)](https://github.com/zouchao/Quiz-AI-Helper-Extension/actions/workflows/release.yml)
+[![Latest release](https://img.shields.io/github/v/release/zouchao/Quiz-AI-Helper-Extension?label=version)](https://github.com/zouchao/Quiz-AI-Helper-Extension/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/zouchao/Quiz-AI-Helper-Extension/total)](https://github.com/zouchao/Quiz-AI-Helper-Extension/releases)
+
 **中文** | [English](README.md)
 
 一个 Chrome 扩展（Manifest V3）：加载参考文档后，AI 理解文档内容并根据页面上的题目自动作答。支持截图识题、多种文档格式，可接入 OpenAI / Anthropic 或任意兼容 API。

@@ -1,5 +1,10 @@
 # Quiz AI Helper
 
+[![CI](https://github.com/zouchao/Quiz-AI-Helper-Extension/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/zouchao/Quiz-AI-Helper-Extension/actions/workflows/ci.yml)
+[![Release](https://github.com/zouchao/Quiz-AI-Helper-Extension/actions/workflows/release.yml/badge.svg)](https://github.com/zouchao/Quiz-AI-Helper-Extension/actions/workflows/release.yml)
+[![Latest release](https://img.shields.io/github/v/release/zouchao/Quiz-AI-Helper-Extension?label=version)](https://github.com/zouchao/Quiz-AI-Helper-Extension/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/zouchao/Quiz-AI-Helper-Extension/total)](https://github.com/zouchao/Quiz-AI-Helper-Extension/releases)
+
 **English** | [中文](README.zh-CN.md)
 
 A Chrome extension (Manifest V3): load reference documents, and the AI reads them and answers the quiz questions on the page. Supports screenshot recognition, multiple document formats, and OpenAI / Anthropic or any compatible API.
