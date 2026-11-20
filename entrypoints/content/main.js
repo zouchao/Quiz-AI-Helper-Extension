@@ -63,7 +63,7 @@ export function main() {
 
     function applyTheme() {
         const dark = config.theme === 'dark' || (config.theme !== 'light' && darkQuery.matches);
-        btn.dataset.theme = panel.dataset.theme = dark ? 'dark' : 'light';
+        btn.dataset.theme = panel.dataset.theme = viewer.dataset.theme = dark ? 'dark' : 'light';
     }
     darkQuery.addEventListener('change', () => { if (config.theme === 'auto') applyTheme(); });
 
@@ -188,6 +188,12 @@ export function main() {
         <div class="qah-section" id="qah-tab-support" style="display:none"></div>
     `;
 
+    // Screenshot lightbox (see "Image viewer" below); mounted alongside btn/panel by attachUI()
+    const viewer = document.createElement('div');
+    viewer.id = 'qah-viewer';
+    viewer.setAttribute('role', 'dialog');
+    viewer.setAttribute('aria-modal', 'true');
+
     function getTopLayerContainer() {
         const dialog = document.querySelector('dialog[open]');
         if (dialog) return dialog;
@@ -199,6 +205,7 @@ export function main() {
         if (btn.parentElement !== container) {
             container.appendChild(btn);
             container.appendChild(panel);
+            container.appendChild(viewer);
         }
     }
 
@@ -325,7 +332,7 @@ export function main() {
             <div class="qah-shots-list">
                 ${screenshots.map((b64, i) => `
                     <div class="qah-shot" draggable="true" data-shot="${i}">
-                        <img src="data:image/jpeg;base64,${b64}" data-view="${i}" alt="${t('shotAlt', i + 1)}" title="${t('shotView')}" draggable="false">
+                        <img src="data:image/jpeg;base64,${b64}" data-view="${i}" alt="${t('shotAlt', i + 1)}" title="${t('shotView')}" draggable="false" tabindex="0" role="button">
                         <span class="qah-shot-num">${i + 1}</span>
                         <button type="button" class="qah-shot-rm" data-rm-shot="${i}" aria-label="${t('del')}" title="${t('del')}">&times;</button>
                         <div class="qah-shot-move">
@@ -386,16 +393,157 @@ export function main() {
                 moveShot(dragFrom, to);
             };
         });
-        // Full-size view in a new tab: data: URLs can't be navigated to directly, so go through a blob
         box.querySelectorAll('[data-view]').forEach(img => {
-            img.onclick = () => {
-                const bin = atob(screenshots[parseInt(img.dataset.view)]);
-                const bytes = new Uint8Array(bin.length);
-                for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-                window.open(URL.createObjectURL(new Blob([bytes], { type: 'image/jpeg' })), '_blank');
-            };
+            img.onclick = () => openViewer(parseInt(img.dataset.view));
+            img.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openViewer(parseInt(img.dataset.view)); } };
         });
     }
+
+    // ===== Image viewer =====
+    // In-page lightbox for the screenshot list: zoom (wheel / buttons / keys), drag to pan,
+    // ‹ › to step through. A sibling of #qah-panel, not a child: the panel's transform
+    // would make a position:fixed child cover only the panel.
+    const ZOOM_MIN = 0.1, ZOOM_MAX = 8, ZOOM_STEP = 1.25;
+    // fit: zoom that fits the whole image in the window (recomputed on resize)
+    const view = { index: 0, zoom: 1, fit: 1, x: 0, y: 0, open: false };
+
+    function renderViewer() {
+        viewer.innerHTML = `
+            <div class="qah-viewer-stage">
+                <img class="qah-viewer-img" alt="" draggable="false">
+            </div>
+            <div class="qah-viewer-bar">
+                <button type="button" data-v="prev" aria-label="${t('viewerPrev')}" title="${t('viewerPrev')} (←)">&lsaquo;</button>
+                <span class="qah-viewer-count"></span>
+                <button type="button" data-v="next" aria-label="${t('viewerNext')}" title="${t('viewerNext')} (→)">&rsaquo;</button>
+                <span class="qah-viewer-sep"></span>
+                <button type="button" data-v="out" aria-label="${t('viewerZoomOut')}" title="${t('viewerZoomOut')} (−)">&minus;</button>
+                <span class="qah-viewer-zoom"></span>
+                <button type="button" data-v="in" aria-label="${t('viewerZoomIn')}" title="${t('viewerZoomIn')} (+)">+</button>
+                <button type="button" data-v="fit" class="qah-viewer-text">${t('viewerFit')}</button>
+                <button type="button" data-v="actual" class="qah-viewer-text">1:1</button>
+            </div>
+            <button type="button" class="qah-viewer-close" data-v="close" aria-label="${t('close')}" title="${t('close')} (Esc)">&times;</button>
+        `;
+        viewer.setAttribute('aria-label', t('viewerTitle'));
+        const actions = {
+            prev: () => showViewerImage(view.index - 1),
+            next: () => showViewerImage(view.index + 1),
+            in: () => zoomViewer(view.zoom * ZOOM_STEP),
+            out: () => zoomViewer(view.zoom / ZOOM_STEP),
+            fit: () => resetViewerZoom(),
+            actual: () => zoomViewer(1),
+            close: () => closeViewer(),
+        };
+        viewer.querySelectorAll('[data-v]').forEach(b => { b.onclick = (e) => { e.stopPropagation(); actions[b.dataset.v](); }; });
+
+        const stage = viewer.querySelector('.qah-viewer-stage');
+        const img = viewer.querySelector('.qah-viewer-img');
+        // Click on the dark backdrop closes; clicks on the image don't
+        stage.onclick = (e) => { if (e.target === stage && !panState.moved) closeViewer(); };
+        img.ondblclick = () => (Math.abs(view.zoom - view.fit) < 0.001 ? zoomViewer(1, centerOf(img)) : resetViewerZoom());
+        stage.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            zoomViewer(view.zoom * (e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP), { x: e.clientX, y: e.clientY });
+        }, { passive: false });
+        const panState = { active: false, moved: false, sx: 0, sy: 0, ox: 0, oy: 0 };
+        img.onpointerdown = (e) => {
+            if (e.button !== 0) return;
+            panState.active = true; panState.moved = false;
+            panState.sx = e.clientX; panState.sy = e.clientY; panState.ox = view.x; panState.oy = view.y;
+            img.setPointerCapture(e.pointerId);
+            img.classList.add('panning');
+        };
+        img.onpointermove = (e) => {
+            if (!panState.active) return;
+            const dx = e.clientX - panState.sx, dy = e.clientY - panState.sy;
+            if (Math.abs(dx) + Math.abs(dy) > 3) panState.moved = true;
+            view.x = panState.ox + dx; view.y = panState.oy + dy;
+            applyViewerTransform();
+        };
+        img.onpointerup = img.onpointercancel = () => { panState.active = false; img.classList.remove('panning'); };
+    }
+
+    const centerOf = (el) => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
+
+    function applyViewerTransform() {
+        const img = viewer.querySelector('.qah-viewer-img');
+        if (!img) return;
+        img.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`;
+        img.classList.toggle('zoomed', view.zoom > view.fit + 0.001);
+        const z = viewer.querySelector('.qah-viewer-zoom');
+        if (z) z.textContent = Math.round(view.zoom * 100) + '%';
+    }
+
+    // Zoom around a screen point (default: window centre), keeping that point fixed
+    function zoomViewer(next, at) {
+        next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
+        const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+        const p = at || { x: cx, y: cy };
+        const k = next / view.zoom;
+        view.x = (p.x - cx) - k * ((p.x - cx) - view.x);
+        view.y = (p.y - cy) - k * ((p.y - cy) - view.y);
+        view.zoom = next;
+        applyViewerTransform();
+    }
+
+    function resetViewerZoom() {
+        const img = viewer.querySelector('.qah-viewer-img');
+        if (!img || !img.naturalWidth) return;
+        // leave room for the toolbar at the bottom and a margin all round
+        view.fit = Math.min(1, (window.innerWidth - 80) / img.naturalWidth, (window.innerHeight - 140) / img.naturalHeight);
+        view.zoom = view.fit; view.x = 0; view.y = 0;
+        applyViewerTransform();
+    }
+
+    function showViewerImage(i) {
+        if (!screenshots.length) return closeViewer();
+        view.index = (i + screenshots.length) % screenshots.length; // wraps around
+        const img = viewer.querySelector('.qah-viewer-img');
+        img.onload = resetViewerZoom;
+        img.src = 'data:image/jpeg;base64,' + screenshots[view.index];
+        img.alt = t('shotAlt', view.index + 1);
+        viewer.querySelector('.qah-viewer-count').textContent = `${view.index + 1} / ${screenshots.length}`;
+        const single = screenshots.length < 2;
+        viewer.querySelectorAll('[data-v="prev"],[data-v="next"]').forEach(b => { b.disabled = single; });
+    }
+
+    let viewerReturnFocus = null;
+    function openViewer(i) {
+        viewerReturnFocus = document.activeElement;
+        renderViewer();
+        view.open = true;
+        viewer.classList.add('show');
+        showViewerImage(i);
+        viewer.querySelector('[data-v="close"]').focus();
+    }
+
+    function closeViewer() {
+        if (!view.open) return;
+        view.open = false;
+        viewer.classList.remove('show');
+        viewer.innerHTML = ''; // drop the full-size image
+        if (viewerReturnFocus && viewerReturnFocus.isConnected) viewerReturnFocus.focus();
+    }
+
+    // Capture phase so the page and our own hotkeys don't also act on these keys
+    document.addEventListener('keydown', (e) => {
+        if (!view.open) return;
+        const keys = {
+            Escape: closeViewer, ArrowLeft: () => showViewerImage(view.index - 1), ArrowRight: () => showViewerImage(view.index + 1),
+            '+': () => zoomViewer(view.zoom * ZOOM_STEP), '=': () => zoomViewer(view.zoom * ZOOM_STEP),
+            '-': () => zoomViewer(view.zoom / ZOOM_STEP), '0': resetViewerZoom, '1': () => zoomViewer(1),
+        };
+        if (keys[e.key]) { e.preventDefault(); e.stopPropagation(); keys[e.key](); }
+        else if (e.key === 'Tab') {
+            // keep focus inside the dialog
+            const f = [...viewer.querySelectorAll('button:not(:disabled)')];
+            const i = f.indexOf(document.activeElement);
+            e.preventDefault();
+            f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
+        }
+    }, true);
+    window.addEventListener('resize', () => { if (view.open) resetViewerZoom(); });
 
     function moveShot(from, to) {
         if (to < 0 || to >= screenshots.length || from === to) return;
