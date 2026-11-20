@@ -256,12 +256,34 @@ export function main() {
     });
 
     // ===== Tab Renderers =====
-    function renderAnswerTab() {
-        const docCount = pdfDocs.length;
+    function docCountText() {
         const totalPages = pdfDocs.reduce((s, d) => s + (d.pages ? d.pages.length : 1), 0);
+        return t('docsLoaded', pdfDocs.length) + (pdfDocs.length ? t('pagesSuffix', totalPages) : '');
+    }
+
+    // Default hint bar: "load docs first" warning, or the usage hint once docs (or no-doc mode) are set
+    function defaultPreviewHtml() {
+        const warn = !pdfDocs.length && !noDocMode;
+        return `${warn ? chip('alert', 'coral') : chip('bulb', 'gold')}<span class="qah-preview-text">${warn ? t('needDocsWarn') : t('hint')}</span>`;
+    }
+
+    // Refresh the answer tab's doc count + hint in place after docs or no-doc mode change,
+    // without re-rendering it (that would wipe the typed question and the answer).
+    // A screenshot/paste status in the hint bar is left alone.
+    function updateDocStatus() {
+        const countEl = document.getElementById('qah-doc-count');
+        if (countEl) countEl.textContent = docCountText();
+        const preview = document.getElementById('qah-question-preview');
+        const text = preview && preview.querySelector('.qah-preview-text');
+        if (text && (text.textContent === t('needDocsWarn') || text.textContent === t('hint'))) {
+            preview.innerHTML = defaultPreviewHtml();
+        }
+    }
+
+    function renderAnswerTab() {
         tabContainers.answer.innerHTML = `
             <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
-                <span style="font-size:11px;color:var(--qah-muted)">${t('docsLoaded', docCount)}${docCount ? t('pagesSuffix', totalPages) : ''}</span>
+                <span id="qah-doc-count" style="font-size:11px;color:var(--qah-muted)">${docCountText()}</span>
                 <div style="display:flex;gap:6px">
                     <button class="qah-btn secondary" id="qah-screenshot">${icon('camera')}${t('btnScreenshot')}</button>
                     <button class="qah-btn accent" id="qah-ask-ai">${icon('sparkle')}${t('btnAsk')}</button>
@@ -273,7 +295,7 @@ export function main() {
                     <span>${t('noDoc')}</span>
                 </label>
             </div>
-            <div id="qah-question-preview">${!docCount && !noDocMode ? chip('alert', 'coral') : chip('bulb', 'gold')}<span class="qah-preview-text">${!docCount && !noDocMode ? t('needDocsWarn') : t('hint')}</span></div>
+            <div id="qah-question-preview">${defaultPreviewHtml()}</div>
             <div id="qah-screenshot-preview" style="display:${screenshotBase64?'block':'none'};margin-bottom:10px">
                 <img id="qah-screenshot-img" src="${screenshotBase64 ? 'data:image/png;base64,'+screenshotBase64 : ''}" style="max-width:100%;border-radius:6px;border:1px solid var(--qah-line)">
                 <button class="qah-btn danger" id="qah-clear-screenshot" style="margin-top:6px;padding:4px 8px;font-size:11px">${icon('trash')}${t('clearShot')}</button>
@@ -286,7 +308,7 @@ export function main() {
         `;
         document.getElementById('qah-screenshot').onclick = captureScreenshot;
         document.getElementById('qah-ask-ai').onclick = askAI;
-        document.getElementById('qah-no-doc').onchange = (e) => { noDocMode = e.target.checked; };
+        document.getElementById('qah-no-doc').onchange = (e) => { noDocMode = e.target.checked; updateDocStatus(); };
         const clearBtn = document.getElementById('qah-clear-screenshot');
         if (clearBtn) clearBtn.onclick = () => {
             screenshotBase64 = null;
@@ -457,6 +479,7 @@ export function main() {
         // repopulate the scan-result list from persisted state (innerHTML above
         // always creates #qah-scan-result empty)
         renderScanResult();
+        updateDocStatus(); // every doc load / delete ends here
     }
 
     function renderConfigTab() {
