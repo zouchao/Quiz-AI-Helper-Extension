@@ -147,14 +147,14 @@ Built with [WXT](https://wxt.dev); the manifest is generated per browser from `w
 ├── public/                # Copied as-is into the build
 │   ├── _locales/          # Store name and description (zh_CN / en)
 │   ├── lib/               # Third-party libraries (pdf.js / marked / mammoth)
-│   └── images/            # Extension icons, donation QR
+│   └── images/            # Extension icons, donation QR codes
 ├── scripts/check-i18n.mjs # Checks zh / en strings match (run in CI)
 └── docs/screenshots/      # README screenshots
 ```
 
 ## Support
 
-If this project helps you, consider buying the author a coffee ☕ (see the **Support** tab in the panel).
+If this project helps you, consider buying the author a coffee ☕ (WeChat Pay and Alipay QR codes in the **Support** tab of the panel).
 
 ## Author
 

@@ -28,7 +28,7 @@ export default defineConfig({
         host_permissions: ['<all_urls>'],
         web_accessible_resources: [
             {
-                resources: ['lib/pdf.worker.min.js', 'images/buy-me-a-coffee.jpeg'],
+                resources: ['lib/pdf.worker.min.js', 'images/buy-me-a-coffee.jpeg', 'images/alipay.jpeg'],
                 matches: ['https://*/*'],
             },
         ],

@@ -147,14 +147,14 @@ develop.*.com
 ├── public/                # 原样复制进构建产物
 │   ├── _locales/          # 商店名称与描述（zh_CN / en）
 │   ├── lib/               # 第三方库（pdf.js / marked / mammoth）
-│   └── images/            # 扩展图标、赞赏码
+│   └── images/            # 扩展图标、赞赏码（微信 / 支付宝）
 ├── scripts/check-i18n.mjs # 校验中 / 英文案一致（CI 中运行）
 └── docs/screenshots/      # README 截图
 ```
 
 ## 支持
 
-如果这个项目对你有帮助，欢迎请作者喝杯咖啡 ☕（面板内 **支持** 标签）。
+如果这个项目对你有帮助，欢迎请作者喝杯咖啡 ☕（面板内 **支持** 标签，支持微信和支付宝）。
 
 ## 作者
 
