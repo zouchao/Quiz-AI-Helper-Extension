@@ -56,8 +56,6 @@ git tag v0.2.0 && git push --follow-tags
 
 ## Usage
 
-> The screenshots below show the Chinese UI; the English UI has the same layout.
-
 ### 1. Open the panel
 
 After installing, a floating button appears at the bottom right of any enabled page. Click it (or press `Alt+Q`) to open the panel:
@@ -68,7 +66,9 @@ After installing, a floating button appears at the bottom right of any enabled p
 
 In the **AI** tab, choose the provider, enter your API key and pick a model (or click Refresh to fetch the available ones); the AI answer language is set here too. The **Settings** tab holds the interface language, theme, active domains, hotkeys and sync:
 
-![Settings tab](docs/screenshots/04-config-tab.png)
+![AI tab](docs/screenshots/04-ai-tab.png)
+
+![Settings tab](docs/screenshots/05-settings-tab.png)
 
 ### 3. Load reference documents (optional)
 
@@ -100,6 +100,8 @@ Two separate options:
 ## Theme
 
 In the **Settings** tab, pick **Auto** (follows the system light/dark setting, default), **Light** or **Dark**. The change applies immediately.
+
+![Dark theme](docs/screenshots/06-dark-theme.png)
 
 ## Active domains
 

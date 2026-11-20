@@ -60,19 +60,21 @@ git tag v0.2.0 && git push --follow-tags
 
 安装后，在任意生效网站页面右下角会出现悬浮按钮，点击（或按 `Alt+Q`）打开面板：
 
-![悬浮按钮](docs/screenshots/01-floating-button.png)
+![悬浮按钮](docs/screenshots/01-floating-button-zh.png)
 
 ### 2. 配置 AI 服务商
 
 在 **AI** 标签中选择服务商、填入 API Key、选择模型（或点「刷新列表」拉取可用模型），AI 回答语言也在这里设置。**设置** 标签里是界面语言、配色、生效域名、快捷键和跨设备同步：
 
-![设置标签](docs/screenshots/04-config-tab.png)
+![AI 标签](docs/screenshots/04-ai-tab-zh.png)
+
+![设置标签](docs/screenshots/05-settings-tab-zh.png)
 
 ### 3. 加载参考文档（可选）
 
 在 **文档** 标签中上传本地文件（PDF / Word / TXT / Markdown）或粘贴链接，支持多选和网页链接自动识别：
 
-![文档标签](docs/screenshots/03-docs-tab.png)
+![文档标签](docs/screenshots/03-docs-tab-zh.png)
 
 也可以点 **扫描当前页面** 自动检测页面内嵌的 PDF（`iframe` / `embed` / 页面链接），一键加载为参考文档。跨域 iframe 中的 PDF 也能扫到：扩展会在每个 iframe 内运行并通过消息中继汇总结果（支持多层嵌套）。注意扫描时需等页面（含 iframe）完全加载。
 
@@ -86,7 +88,7 @@ git tag v0.2.0 && git push --follow-tags
 
 然后点击 **AI 作答** 获取答案：
 
-![答题标签](docs/screenshots/02-answer-tab.png)
+![答题标签](docs/screenshots/02-answer-tab-zh.png)
 
 ## 语言设置
 
@@ -98,6 +100,8 @@ git tag v0.2.0 && git push --follow-tags
 ## 配色
 
 在 **设置** 标签中选择 **跟随系统**（默认，按系统明/暗模式自动切换）、**浅色** 或 **深色**，切换后立即生效。
+
+![深色配色](docs/screenshots/06-dark-theme-zh.png)
 
 ## 生效域名
 
