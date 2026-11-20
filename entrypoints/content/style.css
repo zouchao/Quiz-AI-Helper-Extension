@@ -93,9 +93,10 @@
 #qah-shots:empty{display:none}
 .qah-shots-head{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--qah-muted);margin-bottom:6px}
 .qah-shots-head .qah-btn{padding:3px 8px;font-size:11px}
-/* Wrapping grid: 6 per row at the default panel width, so 20 images fit in 4 rows; scrolls only on a narrower panel.
+/* Fixed 5-column grid: the 20-image limit (MAX_SHOTS) then fills exactly 4 even rows. Columns shrink with the
+   panel instead of reflowing, so the full list always fits and needs no scrolling.
    Padding leaves room for the delete button that sticks out at the top-right (overflow clips it otherwise). */
-.qah-shots-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:12px 10px;max-height:280px;overflow-y:auto;padding:7px 7px 4px 0;margin:-7px 0 6px}
+.qah-shots-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px 10px;padding:7px 7px 4px 0;margin:-7px 0 6px}
 .qah-shot{position:relative;cursor:grab}
 .qah-shot.dragging{opacity:.4}
 .qah-shot.drop-before::before,.qah-shot.drop-after::after{content:'';position:absolute;top:0;bottom:0;width:3px;border-radius:2px;background:var(--qah-gold)}
@@ -119,6 +120,9 @@
 #qah-viewer .qah-viewer-bar{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:6px 8px;border-radius:10px;background:var(--qah-bg);border:1px solid var(--qah-line);color:var(--qah-text);box-shadow:0 6px 20px rgba(0,0,0,.35)}
 #qah-viewer .qah-viewer-bar button{min-width:30px;height:28px;padding:0 6px;border:1px solid transparent;border-radius:6px;background:none;color:var(--qah-text);font-size:17px;line-height:1;cursor:pointer;font-family:inherit}
 #qah-viewer .qah-viewer-bar button.qah-viewer-text{font-size:12px;font-weight:500}
+#qah-viewer .qah-viewer-bar button.qah-viewer-del{color:var(--qah-err);display:inline-flex;align-items:center;justify-content:center}
+#qah-viewer .qah-viewer-bar button.qah-viewer-del:hover{background:var(--qah-err-soft);border-color:var(--qah-err-line)}
+#qah-viewer .qah-viewer-del .qah-ic{width:15px;height:15px}
 #qah-viewer .qah-viewer-bar button:hover:not(:disabled){background:var(--qah-soft);border-color:var(--qah-line)}
 #qah-viewer .qah-viewer-bar button:disabled{opacity:.35;cursor:default}
 #qah-viewer .qah-viewer-count,#qah-viewer .qah-viewer-zoom{min-width:48px;text-align:center;font-size:12px;color:var(--qah-muted);font-variant-numeric:tabular-nums}

@@ -343,14 +343,9 @@ export function main() {
             </div>
             ${screenshots.length > 1 ? `<div class="qah-shots-tip">${t('shotReorderTip')}</div>` : ''}
         `;
-        // Removing images makes an "N added" status stale, so fall back to the default hint
-        const resetHint = () => {
-            const preview = document.getElementById('qah-question-preview');
-            if (preview) preview.innerHTML = defaultPreviewHtml();
-        };
-        document.getElementById('qah-clear-shots').onclick = () => { screenshots = []; renderShots(); resetHint(); };
+        document.getElementById('qah-clear-shots').onclick = () => { screenshots = []; renderShots(); resetShotHint(); };
         box.querySelectorAll('[data-rm-shot]').forEach(b => {
-            b.onclick = () => { screenshots.splice(parseInt(b.dataset.rmShot), 1); renderShots(); resetHint(); };
+            b.onclick = () => removeShot(parseInt(b.dataset.rmShot));
         });
         // Reorder: the ‹ / › buttons swap with a neighbour, drag and drop moves to any position
         box.querySelectorAll('[data-move-shot]').forEach(b => {
@@ -422,6 +417,8 @@ export function main() {
                 <button type="button" data-v="in" aria-label="${t('viewerZoomIn')}" title="${t('viewerZoomIn')} (+)">+</button>
                 <button type="button" data-v="fit" class="qah-viewer-text">${t('viewerFit')}</button>
                 <button type="button" data-v="actual" class="qah-viewer-text">1:1</button>
+                <span class="qah-viewer-sep"></span>
+                <button type="button" data-v="delete" class="qah-viewer-del" aria-label="${t('viewerDelete')}" title="${t('viewerDelete')} (Delete)">${icon('trash')}</button>
             </div>
             <button type="button" class="qah-viewer-close" data-v="close" aria-label="${t('close')}" title="${t('close')} (Esc)">&times;</button>
         `;
@@ -434,6 +431,7 @@ export function main() {
             fit: () => resetViewerZoom(),
             actual: () => zoomViewer(1),
             close: () => closeViewer(),
+            delete: () => deleteViewerImage(),
         };
         viewer.querySelectorAll('[data-v]').forEach(b => { b.onclick = (e) => { e.stopPropagation(); actions[b.dataset.v](); }; });
 
@@ -508,6 +506,14 @@ export function main() {
         viewer.querySelectorAll('[data-v="prev"],[data-v="next"]').forEach(b => { b.disabled = single; });
     }
 
+    // Delete the image on screen, then show the one that moved into its place (the next one),
+    // or the new last image if it was the last; close when none are left
+    function deleteViewerImage() {
+        removeShot(view.index);
+        if (!screenshots.length) return closeViewer();
+        showViewerImage(Math.min(view.index, screenshots.length - 1));
+    }
+
     let viewerReturnFocus = null;
     function openViewer(i) {
         viewerReturnFocus = document.activeElement;
@@ -523,7 +529,11 @@ export function main() {
         view.open = false;
         viewer.classList.remove('show');
         viewer.innerHTML = ''; // drop the full-size image
-        if (viewerReturnFocus && viewerReturnFocus.isConnected) viewerReturnFocus.focus();
+        // The thumbnail that opened the viewer may be gone (deleted, or the grid re-rendered):
+        // focus the one now shown at the same position, else the screenshot button
+        const target = (viewerReturnFocus && viewerReturnFocus.isConnected) ? viewerReturnFocus
+            : document.querySelector(`#qah-shots [data-view="${Math.min(view.index, screenshots.length - 1)}"]`) || document.getElementById('qah-screenshot');
+        if (target) target.focus();
     }
 
     // Capture phase so the page and our own hotkeys don't also act on these keys
@@ -533,6 +543,7 @@ export function main() {
             Escape: closeViewer, ArrowLeft: () => showViewerImage(view.index - 1), ArrowRight: () => showViewerImage(view.index + 1),
             '+': () => zoomViewer(view.zoom * ZOOM_STEP), '=': () => zoomViewer(view.zoom * ZOOM_STEP),
             '-': () => zoomViewer(view.zoom / ZOOM_STEP), '0': resetViewerZoom, '1': () => zoomViewer(1),
+            Delete: deleteViewerImage, Backspace: deleteViewerImage,
         };
         if (keys[e.key]) { e.preventDefault(); e.stopPropagation(); keys[e.key](); }
         else if (e.key === 'Tab') {
@@ -544,6 +555,19 @@ export function main() {
         }
     }, true);
     window.addEventListener('resize', () => { if (view.open) resetViewerZoom(); });
+
+    // Removing images makes an "N added" status stale, so fall back to the default hint
+    function resetShotHint() {
+        const preview = document.getElementById('qah-question-preview');
+        if (preview) preview.innerHTML = defaultPreviewHtml();
+    }
+
+    // Shared by the thumbnail × and the viewer's delete button
+    function removeShot(i) {
+        screenshots.splice(i, 1);
+        renderShots();
+        resetShotHint();
+    }
 
     function moveShot(from, to) {
         if (to < 0 || to >= screenshots.length || from === to) return;
