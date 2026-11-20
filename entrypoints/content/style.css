@@ -1,6 +1,6 @@
 /* Quiz AI Helper panel styles — injected via manifest content_scripts.css.
    All selectors are scoped under #qah-btn / #qah-panel so host pages are unaffected. */
-#qah-btn,#qah-panel{--qah-ink:#1F2A44;--qah-ink-2:#2E3D5E;--qah-on-ink:#fff;--qah-on-gold:#1F2A44;--qah-brand:#1F2A44;--qah-gold-2:#E99A22;--qah-gold-ink:#B8761A;--qah-line-2:#D8CDB8;--qah-err-line:#F0C9C1;--qah-err-chip:#F6D7D0;--qah-shadow:rgba(0,0,0,.12);--qah-gold:#F2A93B;--qah-gold-soft:#FCEBCB;--qah-paper:#FBF7EF;--qah-text:#2B2A27;--qah-muted:#6B6458;--qah-line:#E8E1D3;--qah-soft:#F4EEE2;--qah-bg:#fff;--qah-ok:#2F7D5B;--qah-err:#B4412F;--qah-err-soft:#FBEDEA;--qah-teal:#2A8C82;--qah-teal-soft:#DDF1EE;--qah-coral:#D9634A;--qah-coral-soft:#FBE4DD;--qah-blue:#3B6FD4;--qah-blue-soft:#E1EAFB;--qah-violet:#7A5CC9;--qah-violet-soft:#ECE6F8}
+#qah-btn,#qah-panel{--qah-ink:#1F2A44;--qah-ink-2:#2E3D5E;--qah-on-ink:#fff;--qah-on-brand:#fff;--qah-on-gold:#1F2A44;--qah-brand:#1F2A44;--qah-gold-2:#E99A22;--qah-gold-ink:#B8761A;--qah-line-2:#D8CDB8;--qah-err-line:#F0C9C1;--qah-err-chip:#F6D7D0;--qah-shadow:rgba(0,0,0,.12);--qah-gold:#F2A93B;--qah-gold-soft:#FCEBCB;--qah-paper:#FBF7EF;--qah-text:#2B2A27;--qah-muted:#6B6458;--qah-line:#E8E1D3;--qah-soft:#F4EEE2;--qah-bg:#fff;--qah-ok:#2F7D5B;--qah-err:#B4412F;--qah-err-soft:#FBEDEA;--qah-teal:#2A8C82;--qah-teal-soft:#DDF1EE;--qah-coral:#D9634A;--qah-coral-soft:#FBE4DD;--qah-blue:#3B6FD4;--qah-blue-soft:#E1EAFB;--qah-violet:#7A5CC9;--qah-violet-soft:#ECE6F8}
 /* Dark theme: main.js sets data-theme="dark" on #qah-btn / #qah-panel (config.theme, "auto" follows prefers-color-scheme).
    --qah-ink flips to a light tone (headings / primary buttons); --qah-brand stays navy for the logo tiles. */
 #qah-btn[data-theme=dark],#qah-panel[data-theme=dark]{color-scheme:dark;--qah-ink:#E6E9F2;--qah-ink-2:#C9CFDD;--qah-on-ink:#171C28;--qah-brand:#2E3D5E;--qah-gold:#F2A93B;--qah-gold-2:#F5B95A;--qah-gold-soft:#3A2F1C;--qah-gold-ink:#F2C374;--qah-paper:#1E2433;--qah-text:#E4E1DA;--qah-muted:#9C968A;--qah-line:#343B4D;--qah-line-2:#4A5266;--qah-soft:#262D3E;--qah-bg:#171C28;--qah-ok:#5FBF92;--qah-err:#F08A76;--qah-err-soft:#3A2420;--qah-err-line:#6B3A31;--qah-err-chip:#4A2A24;--qah-teal:#4FC1B5;--qah-teal-soft:#1C3533;--qah-coral:#F08A70;--qah-coral-soft:#3D2621;--qah-blue:#7AA2F0;--qah-blue-soft:#1E2B45;--qah-violet:#A68CF0;--qah-violet-soft:#2B2445;--qah-shadow:rgba(0,0,0,.45)}
@@ -90,3 +90,12 @@
 #qah-question-preview{display:flex;align-items:flex-start;gap:10px;background:var(--qah-paper);border:1px dashed var(--qah-line);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;max-height:120px;overflow-y:auto;line-height:1.6;color:var(--qah-muted)}
 #qah-question-preview .qah-chip{margin-top:-2px}
 #qah-question-preview .qah-preview-text{flex:1;padding-top:3px}
+#qah-shots:empty{display:none}
+.qah-shots-head{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--qah-muted);margin-bottom:6px}
+.qah-shots-head .qah-btn{padding:3px 8px;font-size:11px}
+.qah-shots-list{display:flex;gap:10px;overflow-x:auto;padding:7px 7px 4px 0;margin:-7px 0 10px}
+.qah-shot{position:relative;flex:none}
+.qah-shot img{display:block;height:72px;max-width:128px;object-fit:cover;border-radius:6px;border:1px solid var(--qah-line);cursor:zoom-in}
+.qah-shot-num{position:absolute;left:4px;bottom:4px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--qah-brand);color:var(--qah-on-brand);font-size:10px;line-height:16px;text-align:center;box-sizing:border-box}
+.qah-shot-rm{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:1px solid var(--qah-line);background:var(--qah-bg);color:var(--qah-err);font-size:14px;line-height:1;padding:0;cursor:pointer}
+.qah-shot-rm:hover{background:var(--qah-err-soft);border-color:var(--qah-err-line)}

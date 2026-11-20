@@ -13,7 +13,7 @@ A Chrome extension (Manifest V3): load reference documents, and the AI reads the
 ## Features
 
 - 📄 **Document-based Q&A**: load PDF / DOCX / TXT / Markdown (local files or URLs); the AI answers from their content
-- 📸 **Screenshot answering**: capture the current page in one click, or paste a clipboard screenshot with `Ctrl+V`; a vision model reads the question and answers
+- 📸 **Screenshot answering**: capture the current page in one click, or paste a clipboard screenshot with `Ctrl+V`; add up to 20 screenshots for a question that spans several screens, and a vision model reads them in order and answers
 - 🆓 **No-document mode**: skip the references and let the AI answer from its own knowledge
 - 🤖 **Multiple providers**
   - OpenAI and any compatible API (custom Base URL and model, default `gpt-4o`)
@@ -91,6 +91,8 @@ Back in the **Answer** tab, pick any of three ways to provide the question:
 - Click **Screenshot** (or press `Alt+A`) to capture the current page
 - Paste a clipboard screenshot with `Ctrl+V`
 - Type the question into the text box
+
+Screenshots and pastes are added to a list rather than replacing each other, so a long question can be captured screen by screen (up to 20 images). Each thumbnail can be removed or clicked to view at full size. Images are sent as JPEG, scaled to at most 2576 px on the long edge.
 
 Then click **Ask AI** to get the answer:
 

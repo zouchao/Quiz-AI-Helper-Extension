@@ -22,7 +22,9 @@ export function main() {
     }
 
     // ===== State =====
-    let screenshotBase64 = null;
+    let screenshots = []; // [base64 JPEG], sent to the AI in order
+    const MAX_SHOTS = 20;      // keeps requests under provider size limits (Anthropic: 32 MB)
+    const SHOT_MAX_EDGE = 2576; // long edge, px; current Claude / GPT vision models downscale beyond this
     let pdfDocs = []; // [{name, text}] - stores all document types
     let noDocMode = false;
     let lastScanUrls = [];        // survives re-render so you can load several PDFs from one scan
@@ -296,10 +298,7 @@ export function main() {
                 </label>
             </div>
             <div id="qah-question-preview">${defaultPreviewHtml()}</div>
-            <div id="qah-screenshot-preview" style="display:${screenshotBase64?'block':'none'};margin-bottom:10px">
-                <img id="qah-screenshot-img" src="${screenshotBase64 ? 'data:image/png;base64,'+screenshotBase64 : ''}" style="max-width:100%;border-radius:6px;border:1px solid var(--qah-line)">
-                <button class="qah-btn danger" id="qah-clear-screenshot" style="margin-top:6px;padding:4px 8px;font-size:11px">${icon('trash')}${t('clearShot')}</button>
-            </div>
+            <div id="qah-shots"></div>
             <div class="qah-field">
                 <label>${t('questionLabel')}</label>
                 <textarea id="qah-question" rows="4" placeholder="${t('questionPh')}"></textarea>
@@ -309,11 +308,81 @@ export function main() {
         document.getElementById('qah-screenshot').onclick = captureScreenshot;
         document.getElementById('qah-ask-ai').onclick = askAI;
         document.getElementById('qah-no-doc').onchange = (e) => { noDocMode = e.target.checked; updateDocStatus(); };
-        const clearBtn = document.getElementById('qah-clear-screenshot');
-        if (clearBtn) clearBtn.onclick = () => {
-            screenshotBase64 = null;
-            renderAnswerTab();
+        renderShots();
+    }
+
+    // Thumbnail strip for the screenshot list. Re-rendered on its own so adding or
+    // removing an image keeps the typed question and the last answer.
+    function renderShots() {
+        const box = document.getElementById('qah-shots');
+        if (!box) return;
+        if (!screenshots.length) { box.innerHTML = ''; return; }
+        box.innerHTML = `
+            <div class="qah-shots-head">
+                <span>${t('shotCount', screenshots.length, MAX_SHOTS)}</span>
+                <button class="qah-btn danger" id="qah-clear-shots">${icon('trash')}${t('clearShots')}</button>
+            </div>
+            <div class="qah-shots-list">
+                ${screenshots.map((b64, i) => `
+                    <div class="qah-shot">
+                        <img src="data:image/jpeg;base64,${b64}" data-view="${i}" alt="${t('shotAlt', i + 1)}" title="${t('shotView')}">
+                        <span class="qah-shot-num">${i + 1}</span>
+                        <button type="button" class="qah-shot-rm" data-rm-shot="${i}" aria-label="${t('del')}" title="${t('del')}">&times;</button>
+                    </div>`).join('')}
+            </div>
+        `;
+        // Removing images makes an "N added" status stale, so fall back to the default hint
+        const resetHint = () => {
+            const preview = document.getElementById('qah-question-preview');
+            if (preview) preview.innerHTML = defaultPreviewHtml();
         };
+        document.getElementById('qah-clear-shots').onclick = () => { screenshots = []; renderShots(); resetHint(); };
+        box.querySelectorAll('[data-rm-shot]').forEach(b => {
+            b.onclick = () => { screenshots.splice(parseInt(b.dataset.rmShot), 1); renderShots(); resetHint(); };
+        });
+        // Full-size view in a new tab: data: URLs can't be navigated to directly, so go through a blob
+        box.querySelectorAll('[data-view]').forEach(img => {
+            img.onclick = () => {
+                const bin = atob(screenshots[parseInt(img.dataset.view)]);
+                const bytes = new Uint8Array(bin.length);
+                for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                window.open(URL.createObjectURL(new Blob([bytes], { type: 'image/jpeg' })), '_blank');
+            };
+        });
+    }
+
+    // Re-encode any image (PNG capture, pasted file) as JPEG with the long edge capped at
+    // SHOT_MAX_EDGE: Retina PNGs are 1-3 MB each, JPEG brings them to a few hundred KB.
+    function toJpegBase64(src) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                const scale = Math.min(1, SHOT_MAX_EDGE / Math.max(img.naturalWidth, img.naturalHeight));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(img.naturalWidth * scale);
+                canvas.height = Math.round(img.naturalHeight * scale);
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#fff'; // transparent pasted PNGs would otherwise turn black
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL('image/jpeg', 0.85).split(',')[1]);
+            };
+            img.onerror = () => reject(new Error(t('imageDecodeFail')));
+            img.src = src;
+        });
+    }
+
+    // Append a screenshot; returns false (and shows why) when the list is full
+    async function addShot(src, okKey) {
+        const preview = document.getElementById('qah-question-preview');
+        if (screenshots.length >= MAX_SHOTS) {
+            if (preview) setPreview(preview, t('shotLimit', MAX_SHOTS));
+            return false;
+        }
+        screenshots.push(await toJpegBase64(src));
+        renderShots();
+        if (preview) setPreview(preview, t(okKey, screenshots.length));
+        return true;
     }
 
     function escHtml(s) {
@@ -864,6 +933,11 @@ export function main() {
     // ===== Screenshot =====
     async function captureScreenshot() {
         const preview = document.getElementById('qah-question-preview');
+        if (screenshots.length >= MAX_SHOTS) {
+            panel.classList.add('show');
+            if (preview) setPreview(preview, t('shotLimit', MAX_SHOTS));
+            return;
+        }
         try {
             panel.style.display = 'none';
             btn.style.display = 'none';
@@ -879,9 +953,7 @@ export function main() {
             panel.classList.add('show');
 
             if (resp && resp.dataUrl) {
-                screenshotBase64 = resp.dataUrl.split(',')[1];
-                if (preview) setPreview(preview, t('shotOk'));
-                renderAnswerTab();
+                await addShot(resp.dataUrl, 'shotOk');
             } else {
                 if (preview) setPreview(preview, t('shotFail', resp && resp.error || t('unknown')));
             }
@@ -903,10 +975,10 @@ export function main() {
                 const file = item.getAsFile();
                 const reader = new FileReader();
                 reader.onload = () => {
-                    screenshotBase64 = reader.result.split(',')[1];
-                    renderAnswerTab();
-                    const preview = document.getElementById('qah-question-preview');
-                    if (preview) setPreview(preview, t('pasteOk'));
+                    addShot(reader.result, 'pasteOk').catch(err => {
+                        const preview = document.getElementById('qah-question-preview');
+                        if (preview) setPreview(preview, t('shotFail', err.message));
+                    });
                 };
                 reader.readAsDataURL(file);
                 break;
@@ -920,7 +992,7 @@ export function main() {
         const answerArea = document.getElementById('qah-answer-area');
         const question = questionEl ? questionEl.value.trim() : '';
 
-        if (!question && !screenshotBase64) {
+        if (!question && !screenshots.length) {
             answerArea.innerHTML = `<div class="qah-answer-box error">${t('errNoQuestion')}</div>`;
             return;
         }
@@ -983,9 +1055,9 @@ export function main() {
         try {
             let answer;
             if (config.provider === 'openai') {
-                answer = await callOpenAI(systemPrompt, userText, screenshotBase64);
+                answer = await callOpenAI(systemPrompt, userText, screenshots);
             } else {
-                answer = await callAnthropic(systemPrompt, userText, screenshotBase64);
+                answer = await callAnthropic(systemPrompt, userText, screenshots);
             }
             try { await ensureLib('lib/marked.min.js'); } catch(e) { /* fall back to plain text */ }
             answerArea.innerHTML = `<div class="qah-answer-box"><div class="qah-answer-head">${chip('answer', 'gold')}<span>${t('answerTitle')}</span></div>${renderMarkdown(answer)}</div>`;
@@ -996,13 +1068,20 @@ export function main() {
         }
     }
 
-    function callOpenAI(system, user, imageBase64) {
+    // With several images, label each one so the model can refer to them in order
+    function imageLabel(i, total) {
+        return total > 1 ? { type: 'text', text: t('imageN', i + 1, total) } : null;
+    }
+
+    function callOpenAI(system, user, images) {
         return new Promise((resolve, reject) => {
             const url = config.baseUrl.replace(/\/$/, '') + '/chat/completions';
             const userContent = [];
-            if (imageBase64) {
-                userContent.push({ type: 'image_url', image_url: { url: 'data:image/png;base64,' + imageBase64 } });
-            }
+            images.forEach((b64, i) => {
+                const label = imageLabel(i, images.length);
+                if (label) userContent.push(label);
+                userContent.push({ type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + b64 } });
+            });
             userContent.push({ type: 'text', text: user });
 
             chrome.runtime.sendMessage({
@@ -1034,13 +1113,15 @@ export function main() {
         });
     }
 
-    function callAnthropic(system, user, imageBase64) {
+    function callAnthropic(system, user, images) {
         return new Promise((resolve, reject) => {
             const url = config.anthropicBaseUrl.replace(/\/$/, '') + '/v1/messages';
             const userContent = [];
-            if (imageBase64) {
-                userContent.push({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: imageBase64 } });
-            }
+            images.forEach((b64, i) => {
+                const label = imageLabel(i, images.length);
+                if (label) userContent.push(label);
+                userContent.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } });
+            });
             userContent.push({ type: 'text', text: user });
 
             chrome.runtime.sendMessage({
