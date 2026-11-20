@@ -93,9 +93,20 @@
 #qah-shots:empty{display:none}
 .qah-shots-head{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--qah-muted);margin-bottom:6px}
 .qah-shots-head .qah-btn{padding:3px 8px;font-size:11px}
-.qah-shots-list{display:flex;gap:10px;overflow-x:auto;padding:7px 7px 4px 0;margin:-7px 0 10px}
-.qah-shot{position:relative;flex:none}
-.qah-shot img{display:block;height:72px;max-width:128px;object-fit:cover;border-radius:6px;border:1px solid var(--qah-line);cursor:zoom-in}
+/* Wrapping grid: 6 per row at the default panel width, so 20 images fit in 4 rows; scrolls only on a narrower panel.
+   Padding leaves room for the delete button that sticks out at the top-right (overflow clips it otherwise). */
+.qah-shots-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:12px 10px;max-height:280px;overflow-y:auto;padding:7px 7px 4px 0;margin:-7px 0 6px}
+.qah-shot{position:relative;cursor:grab}
+.qah-shot.dragging{opacity:.4}
+.qah-shot.drop-before::before,.qah-shot.drop-after::after{content:'';position:absolute;top:0;bottom:0;width:3px;border-radius:2px;background:var(--qah-gold)}
+.qah-shot.drop-before::before{left:-7px}.qah-shot.drop-after::after{right:-7px}
+.qah-shot img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;object-position:top;border-radius:6px;border:1px solid var(--qah-line);cursor:zoom-in}
+.qah-shot-move{position:absolute;right:4px;bottom:4px;display:flex;gap:2px;opacity:0;transition:opacity .15s}
+.qah-shot:hover .qah-shot-move,.qah-shot:focus-within .qah-shot-move{opacity:1}
+.qah-shot-move button{width:20px;height:18px;padding:0;border:1px solid var(--qah-line);border-radius:4px;background:var(--qah-bg);color:var(--qah-text);font-size:14px;line-height:1;cursor:pointer}
+.qah-shot-move button:hover:not(:disabled){background:var(--qah-soft)}
+.qah-shot-move button:disabled{opacity:.35;cursor:default}
+.qah-shots-tip{font-size:11px;color:var(--qah-muted);margin-bottom:10px}
 .qah-shot-num{position:absolute;left:4px;bottom:4px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--qah-brand);color:var(--qah-on-brand);font-size:10px;line-height:16px;text-align:center;box-sizing:border-box}
 .qah-shot-rm{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:1px solid var(--qah-line);background:var(--qah-bg);color:var(--qah-err);font-size:14px;line-height:1;padding:0;cursor:pointer}
 .qah-shot-rm:hover{background:var(--qah-err-soft);border-color:var(--qah-err-line)}

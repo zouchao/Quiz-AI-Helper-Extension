@@ -324,12 +324,17 @@ export function main() {
             </div>
             <div class="qah-shots-list">
                 ${screenshots.map((b64, i) => `
-                    <div class="qah-shot">
-                        <img src="data:image/jpeg;base64,${b64}" data-view="${i}" alt="${t('shotAlt', i + 1)}" title="${t('shotView')}">
+                    <div class="qah-shot" draggable="true" data-shot="${i}">
+                        <img src="data:image/jpeg;base64,${b64}" data-view="${i}" alt="${t('shotAlt', i + 1)}" title="${t('shotView')}" draggable="false">
                         <span class="qah-shot-num">${i + 1}</span>
                         <button type="button" class="qah-shot-rm" data-rm-shot="${i}" aria-label="${t('del')}" title="${t('del')}">&times;</button>
+                        <div class="qah-shot-move">
+                            <button type="button" data-move-shot="${i}" data-dir="-1" aria-label="${t('shotMoveUp')}" title="${t('shotMoveUp')}" ${i === 0 ? 'disabled' : ''}>&lsaquo;</button>
+                            <button type="button" data-move-shot="${i}" data-dir="1" aria-label="${t('shotMoveDown')}" title="${t('shotMoveDown')}" ${i === screenshots.length - 1 ? 'disabled' : ''}>&rsaquo;</button>
+                        </div>
                     </div>`).join('')}
             </div>
+            ${screenshots.length > 1 ? `<div class="qah-shots-tip">${t('shotReorderTip')}</div>` : ''}
         `;
         // Removing images makes an "N added" status stale, so fall back to the default hint
         const resetHint = () => {
@@ -340,6 +345,47 @@ export function main() {
         box.querySelectorAll('[data-rm-shot]').forEach(b => {
             b.onclick = () => { screenshots.splice(parseInt(b.dataset.rmShot), 1); renderShots(); resetHint(); };
         });
+        // Reorder: the ‹ / › buttons swap with a neighbour, drag and drop moves to any position
+        box.querySelectorAll('[data-move-shot]').forEach(b => {
+            b.onclick = () => {
+                const from = parseInt(b.dataset.moveShot);
+                moveShot(from, from + parseInt(b.dataset.dir));
+                const again = box.querySelector(`[data-move-shot="${from + parseInt(b.dataset.dir)}"][data-dir="${b.dataset.dir}"]`);
+                if (again && !again.disabled) again.focus(); // keep keyboard focus on the moved image
+            };
+        });
+        let dragFrom = null;
+        box.querySelectorAll('.qah-shot').forEach(el => {
+            const idx = parseInt(el.dataset.shot);
+            el.ondragstart = (e) => {
+                dragFrom = idx;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', String(idx)); // Firefox won't start a drag without data
+                el.classList.add('dragging');
+            };
+            el.ondragend = () => {
+                dragFrom = null;
+                box.querySelectorAll('.qah-shot').forEach(x => x.classList.remove('dragging', 'drop-before', 'drop-after'));
+            };
+            el.ondragover = (e) => {
+                if (dragFrom === null) return; // ignore files / text dragged in from the page
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                const after = e.clientX > el.getBoundingClientRect().left + el.offsetWidth / 2;
+                el.classList.toggle('drop-before', !after);
+                el.classList.toggle('drop-after', after);
+            };
+            el.ondragleave = () => el.classList.remove('drop-before', 'drop-after');
+            el.ondrop = (e) => {
+                if (dragFrom === null) return;
+                e.preventDefault();
+                const after = e.clientX > el.getBoundingClientRect().left + el.offsetWidth / 2;
+                // target index after the dragged item is taken out of the list
+                let to = idx + (after ? 1 : 0);
+                if (dragFrom < to) to--;
+                moveShot(dragFrom, to);
+            };
+        });
         // Full-size view in a new tab: data: URLs can't be navigated to directly, so go through a blob
         box.querySelectorAll('[data-view]').forEach(img => {
             img.onclick = () => {
@@ -349,6 +395,13 @@ export function main() {
                 window.open(URL.createObjectURL(new Blob([bytes], { type: 'image/jpeg' })), '_blank');
             };
         });
+    }
+
+    function moveShot(from, to) {
+        if (to < 0 || to >= screenshots.length || from === to) return;
+        const [shot] = screenshots.splice(from, 1);
+        screenshots.splice(to, 0, shot);
+        renderShots();
     }
 
     // Re-encode any image (PNG capture, pasted file) as JPEG with the long edge capped at
