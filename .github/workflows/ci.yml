@@ -25,6 +25,10 @@ jobs:
 
       - run: npm ci
 
+      # zh / en dictionaries must have the same keys and placeholders
+      - name: Check i18n
+        run: npm run check:i18n
+
       # Chrome / Edge / Opera / Brave share the chrome-mv3 build
       - name: Build Chrome
         run: npm run zip

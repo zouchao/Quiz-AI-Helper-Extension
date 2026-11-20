@@ -146,6 +146,7 @@ Built with [WXT](https://wxt.dev); the manifest is generated per browser from `w
 │   ├── _locales/          # Store name and description (zh_CN / en)
 │   ├── lib/               # Third-party libraries (pdf.js / marked / mammoth)
 │   └── images/            # Extension icons, donation QR
+├── scripts/check-i18n.mjs # Checks zh / en strings match (run in CI)
 └── docs/screenshots/      # README screenshots
 ```
 

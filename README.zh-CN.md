@@ -146,6 +146,7 @@ develop.*.com
 │   ├── _locales/          # 商店名称与描述（zh_CN / en）
 │   ├── lib/               # 第三方库（pdf.js / marked / mammoth）
 │   └── images/            # 扩展图标、赞赏码
+├── scripts/check-i18n.mjs # 校验中 / 英文案一致（CI 中运行）
 └── docs/screenshots/      # README 截图
 ```
 
