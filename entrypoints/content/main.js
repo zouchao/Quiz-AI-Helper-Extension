@@ -1,5 +1,6 @@
 import { I18N } from './i18n.js';
-import { LOGO_SVG, ICON_PATHS, icon, chip, groupTitle, fileTone } from './icons.js';
+import { LOGO_SVG, ICON_PATHS, icon, brandIcon, chip, groupTitle, fileTone } from './icons.js';
+import { PROVIDER_PRESETS, ANTHROPIC_MODELS, presetById, presetOf } from './providers.js';
 
 // Whole content-script body; called once per frame from index.js.
 export function main() {
@@ -30,13 +31,8 @@ export function main() {
     let lastScanUrls = [];        // survives re-render so you can load several PDFs from one scan
     let loadedScanUrls = new Set(); // scanned URLs already loaded, shown as ✓ Loaded
     let config = Object.assign({
-        provider: 'openai',
-        apiKey: '',
-        baseUrl: 'https://api.openai.com/v1',
-        model: 'gpt-4o',
-        anthropicKey: '',
-        anthropicBaseUrl: 'https://api.anthropic.com',
-        anthropicModel: 'claude-sonnet-4-20250514',
+        providers: [],         // [{id, preset, name, protocol, baseUrl, apiKey, model}], see providers.js
+        activeProvider: '',    // id of the one used for answering
         hotkeyToggle: 'Alt+Q',
         hotkeyScreenshot: 'Alt+A',
         allowedDomains: '',
@@ -81,9 +77,9 @@ export function main() {
             syncEnabled = loc.qah_sync === undefined ? !!synced : !!loc.qah_sync;
             if (loc.qah_sync === undefined && synced) chrome.storage.local.set({ qah_sync: true });
             const stored = syncEnabled ? (synced || loc.qah_config) : loc.qah_config;
-            if (stored) Object.assign(config, stored);
+            const migrated = stored && applyStoredConfig(stored);
             // Sync on but nothing uploaded yet (e.g. sync data cleared): seed it from this device
-            if (syncEnabled && !synced && loc.qah_config) saveConfigToStorage();
+            if ((syncEnabled && !synced && loc.qah_config) || migrated) saveConfigToStorage();
             renderAll(); // re-render with loaded values (initial render runs before storage callback)
             applyDomainGate();
         });
@@ -95,7 +91,7 @@ export function main() {
         if (area === 'local' && changes.qah_sync && !!changes.qah_sync.newValue !== syncEnabled) {
             syncEnabled = !!changes.qah_sync.newValue;
             configArea().get('qah_config', (r) => {
-                if (r && r.qah_config) Object.assign(config, r.qah_config);
+                if (r && r.qah_config) applyStoredConfig(r.qah_config);
                 renderAll();
                 applyDomainGate();
             });
@@ -104,10 +100,38 @@ export function main() {
         if (area !== (syncEnabled ? 'sync' : 'local') || !changes.qah_config) return;
         const next = changes.qah_config.newValue;
         if (!next || JSON.stringify(next) === JSON.stringify(config)) return; // our own write
-        Object.assign(config, next);
+        applyStoredConfig(next);
         renderAll();
         applyDomainGate();
     });
+
+    // Merge a stored config into `config`. Configs from before multi-provider support
+    // (provider / apiKey / baseUrl / model / anthropic*) become provider entries.
+    // Returns true when such a migration happened, so the caller can persist it.
+    const LEGACY_KEYS = ['provider', 'apiKey', 'baseUrl', 'model', 'anthropicKey', 'anthropicBaseUrl', 'anthropicModel'];
+    function applyStoredConfig(stored) {
+        Object.assign(config, stored);
+        const legacy = !Array.isArray(stored.providers);
+        if (legacy) {
+            config.providers = [];
+            const add = (protocol, baseUrl, apiKey, model) => {
+                const entry = newProvider(guessPreset(protocol, baseUrl), { baseUrl, apiKey, model });
+                config.providers.push(entry);
+                return entry.id;
+            };
+            let openaiId, antId;
+            if (stored.apiKey || stored.provider !== 'anthropic') {
+                openaiId = add('openai', stored.baseUrl || 'https://api.openai.com/v1', stored.apiKey || '', stored.model || 'gpt-4o');
+            }
+            if (stored.anthropicKey || stored.provider === 'anthropic') {
+                antId = add('anthropic', stored.anthropicBaseUrl || 'https://api.anthropic.com', stored.anthropicKey || '', stored.anthropicModel || '');
+            }
+            config.activeProvider = (stored.provider === 'anthropic' ? antId : openaiId) || '';
+        }
+        LEGACY_KEYS.forEach(k => delete config[k]);
+        if (!activeProvider()) config.activeProvider = config.providers.length ? config.providers[0].id : '';
+        return legacy;
+    }
 
     function saveConfigToStorage(onDone) {
         configArea().set({ qah_config: config }, () => {
@@ -141,7 +165,7 @@ export function main() {
             syncEnabled = true;
             chrome.storage.local.set({ qah_sync: true });
             if (syn && syn.qah_config) {
-                Object.assign(config, syn.qah_config);
+                applyStoredConfig(syn.qah_config);
                 renderAll();
                 applyDomainGate();
                 done('syncPulled')();
@@ -293,7 +317,8 @@ export function main() {
         tabContainers.answer.innerHTML = `
             <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
                 <span id="qah-doc-count" style="font-size:11px;color:var(--qah-muted)">${docCountText()}</span>
-                <div style="display:flex;gap:6px">
+                <div style="display:flex;gap:6px;align-items:center">
+                    <span id="qah-quick-provider"></span>
                     <button class="qah-btn secondary" id="qah-screenshot">${icon('camera')}${t('btnScreenshot')}</button>
                     <button class="qah-btn accent" id="qah-ask-ai">${icon('sparkle')}${t('btnAsk')}</button>
                 </div>
@@ -316,6 +341,7 @@ export function main() {
         document.getElementById('qah-ask-ai').onclick = askAI;
         document.getElementById('qah-no-doc').onchange = (e) => { noDocMode = e.target.checked; updateDocStatus(); };
         renderShots();
+        renderQuickProvider();
     }
 
     // Thumbnail strip for the screenshot list. Re-rendered on its own so adding or
@@ -843,18 +869,46 @@ export function main() {
         document.getElementById('qah-sync-on').onchange = (e) => setSyncEnabled(e.target.checked);
     }
 
-    // AI tab: provider, endpoint / key / model, answer language. Has its own save
-    // button; saving collects every field on both tabs (all tabs stay in the DOM).
+    // ===== AI providers =====
+    // Several saved providers (cc-switch style), one active. The AI tab shows either the
+    // list, the preset picker or the editor (aiView); the editor works on a copy (aiDraft)
+    // that only replaces the saved entry on Save, and survives renderAll().
+    let aiView = 'list'; // 'list' | 'pick' | 'edit'
+    let aiDraft = null;
+    let aiDraftIsNew = false;
+
+    const activeProvider = () => config.providers.find(p => p.id === config.activeProvider) || null;
+    const presetName = (preset) => preset.nameKey ? t(preset.nameKey) : preset.name;
+    const providerName = (entry) => entry.name || presetName(presetOf(entry));
+    const providerIcon = (preset) => preset.brand ? brandIcon(preset.brand) : icon(preset.icon);
+
+    function newProvider(presetId, overrides) {
+        const preset = presetById(presetId);
+        return Object.assign({
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            preset: preset.id, name: '', protocol: preset.protocol,
+            baseUrl: preset.baseUrl, apiKey: '', model: preset.model
+        }, overrides);
+    }
+
+    // Preset whose endpoint host matches, else the custom entry of that protocol (legacy migration)
+    function guessPreset(protocol, baseUrl) {
+        const host = (u) => { try { return new URL(u).host; } catch(e) { return ''; } };
+        const hit = PROVIDER_PRESETS.find(p => p.protocol === protocol && p.baseUrl && host(p.baseUrl) === host(baseUrl));
+        return hit ? hit.id : 'custom-' + protocol;
+    }
+
+    function setActiveProvider(id) {
+        config.activeProvider = id;
+        saveConfigToStorage();
+        if (aiView === 'list') renderAiTab();
+        renderQuickProvider();
+    }
+
+    // AI tab: provider list / picker / editor, plus the answer language (saved on change).
     function renderAiTab() {
-        tabContainers.ai.innerHTML = `
-            ${groupTitle('cpu', 'blue', t('providerLabel'))}
-            <div class="qah-field">
-                <select id="qah-provider">
-                    <option value="openai" ${config.provider==='openai'?'selected':''}>${t('openaiOpt')}</option>
-                    <option value="anthropic" ${config.provider==='anthropic'?'selected':''}>Anthropic (Claude)</option>
-                </select>
-            </div>
-            <div id="qah-provider-fields"></div>
+        const body = aiView === 'pick' ? aiPickerHtml() : aiView === 'edit' ? aiEditorHtml() : aiListHtml();
+        tabContainers.ai.innerHTML = body + (aiView !== 'list' ? '' : `
             <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--qah-line)">
                 ${groupTitle('globe', 'teal', t('answerLangLabel'))}
                 <div class="qah-field">
@@ -865,63 +919,211 @@ export function main() {
                         <option value="en" ${config.answerLang==='en'?'selected':''}>English</option>
                     </select>
                 </div>
+            </div>`);
+        if (aiView === 'pick') bindAiPicker();
+        else if (aiView === 'edit') bindAiEditor();
+        else bindAiList();
+    }
+
+    function aiListHtml() {
+        const cards = config.providers.map(p => {
+            const preset = presetOf(p);
+            const on = p.id === config.activeProvider;
+            let host = '';
+            try { host = new URL(p.baseUrl).host; } catch(e) {}
+            const sub = [p.model, host].filter(Boolean).map(escHtml).join(' · ') || t('provNotSet');
+            return `
+                <div class="qah-prov${on ? ' active' : ''}" data-use="${p.id}" tabindex="0" role="button" aria-pressed="${on}">
+                    <span class="qah-prov-icon">${providerIcon(preset)}</span>
+                    <span class="qah-prov-text">
+                        <span class="qah-prov-name">${escHtml(providerName(p))}</span>
+                        <span class="qah-prov-sub">${sub}</span>
+                    </span>
+                    ${on ? `<span class="qah-prov-badge">${t('provActive')}</span>` : ''}
+                    <button class="qah-prov-act" data-edit="${p.id}" title="${t('provEdit')}" aria-label="${t('provEdit')}">${icon('edit')}</button>
+                    <button class="qah-prov-act danger" data-del="${p.id}" title="${t('del')}" aria-label="${t('del')}">${icon('trash')}</button>
+                </div>`;
+        }).join('');
+        return `
+            <div class="qah-prov-head">
+                ${groupTitle('cpu', 'blue', t('providerLabel'))}
+                <button class="qah-btn secondary" id="qah-prov-add">${icon('plus')}${t('provAdd')}</button>
             </div>
-            <button class="qah-btn" id="qah-save-ai" style="margin-top:12px">${icon('check')}${t('saveBtn')}</button>
-            <span id="qah-save-ai-status" style="margin-left:10px;font-size:11px;color:var(--qah-ok)"></span>
-        `;
-        renderProviderFields();
+            ${cards || `<div class="qah-empty">${chip('cpu', 'blue')}<span>${t('provEmpty')}</span></div>`}
+            ${config.providers.length > 1 ? `<div class="qah-prov-tip">${t('provSwitchTip')}</div>` : ''}
+            <span id="qah-prov-status" class="qah-status" style="font-size:11px;margin-top:6px"></span>`;
+    }
+
+    function bindAiList() {
         document.getElementById('qah-answer-lang').onchange = (e) => {
             config.answerLang = e.target.value;
             saveConfigToStorage();
         };
-        document.getElementById('qah-provider').onchange = (e) => {
-            config.provider = e.target.value;
-            renderProviderFields();
-        };
-        document.getElementById('qah-save-ai').onclick = () => saveConfig('qah-save-ai-status');
+        document.getElementById('qah-prov-add').onclick = () => { aiView = 'pick'; renderAiTab(); };
+        tabContainers.ai.querySelectorAll('[data-use]').forEach(el => {
+            el.onclick = () => setActiveProvider(el.dataset.use);
+            el.onkeydown = (e) => { if (e.target === el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); el.click(); } };
+        });
+        tabContainers.ai.querySelectorAll('[data-edit]').forEach(b => {
+            b.onclick = (e) => {
+                e.stopPropagation();
+                aiDraft = Object.assign({}, config.providers.find(p => p.id === b.dataset.edit));
+                aiDraftIsNew = false;
+                aiView = 'edit';
+                renderAiTab();
+            };
+        });
+        tabContainers.ai.querySelectorAll('[data-del]').forEach(b => {
+            b.onclick = (e) => {
+                e.stopPropagation();
+                const entry = config.providers.find(p => p.id === b.dataset.del);
+                if (!entry || !confirm(t('provDelConfirm', providerName(entry)))) return;
+                config.providers = config.providers.filter(p => p !== entry);
+                if (config.activeProvider === entry.id) config.activeProvider = config.providers.length ? config.providers[0].id : '';
+                saveConfigToStorage();
+                renderAiTab();
+                renderQuickProvider();
+            };
+        });
     }
 
-    function renderProviderFields() {
-        const container = document.getElementById('qah-provider-fields');
-        if (config.provider === 'openai') {
-            container.innerHTML = `
-                <div class="qah-field">
-                    <label>API Base URL</label>
-                    <input id="qah-base-url" value="${config.baseUrl}" placeholder="https://api.openai.com/v1">
+    function aiPickerHtml() {
+        const tiles = PROVIDER_PRESETS.map(p => `
+            <button class="qah-preset" data-preset="${p.id}">
+                <span class="qah-prov-icon">${providerIcon(p)}</span>
+                <span class="qah-preset-name">${escHtml(presetName(p))}</span>
+            </button>`).join('');
+        return `
+            <div class="qah-prov-head">
+                ${groupTitle('plus', 'violet', t('provPickTitle'))}
+                <button class="qah-btn secondary" id="qah-prov-back">${t('cancel')}</button>
+            </div>
+            <div class="qah-preset-grid">${tiles}</div>`;
+    }
+
+    function bindAiPicker() {
+        document.getElementById('qah-prov-back').onclick = () => { aiView = 'list'; renderAiTab(); };
+        tabContainers.ai.querySelectorAll('[data-preset]').forEach(b => {
+            b.onclick = () => {
+                aiDraft = newProvider(b.dataset.preset);
+                aiDraftIsNew = true;
+                aiView = 'edit';
+                renderAiTab();
+            };
+        });
+    }
+
+    function aiEditorHtml() {
+        const d = aiDraft;
+        const preset = presetOf(d);
+        const custom = preset.id.startsWith('custom-');
+        const urlPh = d.protocol === 'anthropic' ? 'https://api.anthropic.com' : 'https://api.example.com/v1';
+        const notes = [];
+        if (preset.vision === false) notes.push(t('provNoVision'));
+        if (preset.hintKey) notes.push(t(preset.hintKey));
+        return `
+            <div class="qah-prov-head">
+                <div class="qah-group-title"><span class="qah-prov-icon sm">${providerIcon(preset)}</span><span>${escHtml(aiDraftIsNew ? t('provAddTitle', presetName(preset)) : providerName(d))}</span></div>
+                ${preset.keyUrl ? `<a class="qah-prov-link" href="${preset.keyUrl}" target="_blank" rel="noopener noreferrer">${t('provGetKey')} ↗</a>` : ''}
+            </div>
+            ${notes.map(n => `<div class="qah-prov-note">${icon('alert')}<span>${n}</span></div>`).join('')}
+            <div class="qah-field">
+                <label>${t('provName')}</label>
+                <input id="qah-prov-name" value="${escHtml(d.name)}" placeholder="${escHtml(presetName(preset))}">
+            </div>
+            <div class="qah-field">
+                <label>${t('provProtocol')}</label>
+                <select id="qah-prov-protocol" ${custom ? '' : 'disabled'}>
+                    <option value="openai" ${d.protocol==='openai'?'selected':''}>${t('protoOpenai')}</option>
+                    <option value="anthropic" ${d.protocol==='anthropic'?'selected':''}>${t('protoAnthropic')}</option>
+                </select>
+            </div>
+            <div class="qah-field">
+                <label>API Base URL</label>
+                <input id="qah-prov-url" value="${escHtml(d.baseUrl)}" placeholder="${urlPh}">
+            </div>
+            <div class="qah-field">
+                <label>API Key${preset.noKey ? ` <span style="color:var(--qah-muted);font-weight:400">(${t('provOptional')})</span>` : ''}</label>
+                <input id="qah-prov-key" type="password" value="${escHtml(d.apiKey)}" placeholder="${d.protocol === 'anthropic' ? 'sk-ant-...' : 'sk-...'}">
+            </div>
+            <div class="qah-field">
+                <label>${t('modelLabel')}</label>
+                <div style="display:flex;gap:6px">
+                    <input id="qah-prov-model" list="qah-prov-models" value="${escHtml(d.model)}" placeholder="${t('provModelPh')}" style="flex:1">
+                    <datalist id="qah-prov-models"></datalist>
+                    <button class="qah-btn secondary" id="qah-fetch-models" style="padding:6px 10px;font-size:11px">${t('refreshBtn')}</button>
                 </div>
-                <div class="qah-field">
-                    <label>API Key</label>
-                    <input id="qah-api-key" type="password" value="${config.apiKey}" placeholder="sk-...">
-                </div>
-                <div class="qah-field">
-                    <label>${t('modelLabel')}</label>
-                    <div style="display:flex;gap:6px">
-                        <select id="qah-model" style="flex:1"><option value="${config.model}">${config.model || t('refreshPh')}</option></select>
-                        <button class="qah-btn secondary" id="qah-fetch-models" style="padding:6px 10px;font-size:11px">${t('refreshBtn')}</button>
-                    </div>
-                </div>
-            `;
-            document.getElementById('qah-fetch-models').onclick = () => fetchModels('openai');
-        } else {
-            container.innerHTML = `
-                <div class="qah-field">
-                    <label>API Base URL</label>
-                    <input id="qah-anthropic-url" value="${config.anthropicBaseUrl}" placeholder="https://api.anthropic.com">
-                </div>
-                <div class="qah-field">
-                    <label>API Key</label>
-                    <input id="qah-anthropic-key" type="password" value="${config.anthropicKey}" placeholder="sk-ant-...">
-                </div>
-                <div class="qah-field">
-                    <label>${t('modelLabel')}</label>
-                    <div style="display:flex;gap:6px">
-                        <select id="qah-anthropic-model" style="flex:1"><option value="${config.anthropicModel}">${config.anthropicModel || t('refreshPh')}</option></select>
-                        <button class="qah-btn secondary" id="qah-fetch-models-ant" style="padding:6px 10px;font-size:11px">${t('refreshBtn')}</button>
-                    </div>
-                </div>
-            `;
-            document.getElementById('qah-fetch-models-ant').onclick = () => fetchModels('anthropic');
-        }
+                <span id="qah-models-status" style="display:block;font-size:11px;color:var(--qah-muted);margin-top:4px"></span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+                <button class="qah-btn" id="qah-prov-save">${icon('check')}${t('saveBtn')}</button>
+                <button class="qah-btn secondary" id="qah-prov-cancel">${t('cancel')}</button>
+                <span id="qah-prov-edit-status" style="font-size:11px"></span>
+            </div>`;
+    }
+
+    function bindAiEditor() {
+        document.getElementById('qah-fetch-models').onclick = fetchModels;
+        document.getElementById('qah-prov-protocol').onchange = (e) => {
+            collectAiDraft();
+            aiDraft.protocol = e.target.value;
+            renderAiTab();
+        };
+        document.getElementById('qah-prov-cancel').onclick = () => {
+            aiDraft = null;
+            aiView = aiDraftIsNew ? 'pick' : 'list';
+            renderAiTab();
+        };
+        document.getElementById('qah-prov-save').onclick = () => {
+            collectAiDraft();
+            const status = document.getElementById('qah-prov-edit-status');
+            if (!aiDraft.baseUrl) { status.style.color = 'var(--qah-err)'; status.textContent = t('provNeedUrl'); return; }
+            const i = config.providers.findIndex(p => p.id === aiDraft.id);
+            if (i >= 0) config.providers[i] = aiDraft;
+            else config.providers.push(aiDraft);
+            // A freshly added provider becomes the active one: that is almost always why it was added
+            if (aiDraftIsNew || !activeProvider()) config.activeProvider = aiDraft.id;
+            saveConfigToStorage((err) => {
+                if (err) {
+                    status.style.color = 'var(--qah-err)';
+                    status.textContent = t('saveFail', err.message);
+                    return;
+                }
+                aiDraft = null;
+                aiView = 'list';
+                renderAiTab();
+                renderQuickProvider();
+                const s = document.getElementById('qah-prov-status');
+                if (s) {
+                    s.style.color = 'var(--qah-ok)';
+                    s.textContent = t('saved');
+                    setTimeout(() => { if (s.isConnected) s.textContent = ''; }, 2000);
+                }
+            });
+        };
+    }
+
+    // Editor inputs → aiDraft (not saved). Also called before renderAll() so a language switch keeps the edits.
+    function collectAiDraft() {
+        if (aiView !== 'edit' || !aiDraft || !document.getElementById('qah-prov-url')) return;
+        aiDraft.name = document.getElementById('qah-prov-name').value.trim();
+        aiDraft.baseUrl = document.getElementById('qah-prov-url').value.trim();
+        aiDraft.apiKey = document.getElementById('qah-prov-key').value.trim();
+        aiDraft.model = document.getElementById('qah-prov-model').value.trim();
+    }
+
+    // Small provider switcher on the Answer tab (only with 2+ providers)
+    function renderQuickProvider() {
+        const box = document.getElementById('qah-quick-provider');
+        if (!box) return;
+        if (config.providers.length < 2) { box.innerHTML = ''; return; }
+        box.innerHTML = `<select aria-label="${t('providerLabel')}" title="${t('providerLabel')}">${config.providers.map(p =>
+            `<option value="${p.id}" ${p.id === config.activeProvider ? 'selected' : ''}>${escHtml(providerName(p))}${p.model ? ' · ' + escHtml(p.model) : ''}</option>`
+        ).join('')}</select>`;
+        box.querySelector('select').onchange = (e) => {
+            collectAiDraft();
+            setActiveProvider(e.target.value);
+        };
     }
 
     function renderSupportTab() {
@@ -956,75 +1158,41 @@ export function main() {
         e.target.value = parts.join('+');
     }
 
-    function fetchModels(provider) {
-        if (provider === 'openai') {
-            const baseUrl = document.getElementById('qah-base-url').value.trim().replace(/\/$/, '');
-            const apiKey = document.getElementById('qah-api-key').value.trim();
-            if (!apiKey) { alert(t('needKey')); return; }
-            const selectEl = document.getElementById('qah-model');
-            selectEl.innerHTML = `<option value="">${t('loading')}</option>`;
-            chrome.runtime.sendMessage({
-                type: 'API_REQUEST',
-                url: baseUrl + '/models',
-                method: 'GET',
-                headers: { 'Authorization': 'Bearer ' + apiKey }
-            }, (resp) => {
-                try {
-                    const data = JSON.parse(resp.text);
-                    const models = (data.data || data).map(m => m.id || m.name || m).filter(Boolean).sort();
-                    selectEl.innerHTML = models.map(m => `<option value="${m}" ${m===config.model?'selected':''}>${m}</option>`).join('');
-                    if (!models.length) selectEl.innerHTML = `<option value="">${t('noModels')}</option>`;
-                } catch(e) {
-                    selectEl.innerHTML = `<option value="">${t('loadFailed')}</option>`;
-                }
-            });
-        } else {
-            const baseUrl = document.getElementById('qah-anthropic-url').value.trim().replace(/\/$/, '');
-            const apiKey = document.getElementById('qah-anthropic-key').value.trim();
-            if (!apiKey) { alert(t('needKey')); return; }
-            const selectEl = document.getElementById('qah-anthropic-model');
-            selectEl.innerHTML = `<option value="">${t('loading')}</option>`;
-            chrome.runtime.sendMessage({
-                type: 'API_REQUEST',
-                url: baseUrl + '/v1/models',
-                method: 'GET',
-                headers: {
-                    'x-api-key': apiKey,
-                    'anthropic-version': '2023-06-01',
-                    'anthropic-dangerous-direct-browser-access': 'true'
-                }
-            }, (resp) => {
-                try {
-                    const data = JSON.parse(resp.text);
-                    const models = (data.data || data).map(m => m.id || m.name || m).filter(Boolean).sort();
-                    if (models.length) {
-                        selectEl.innerHTML = models.map(m => `<option value="${m}" ${m===config.anthropicModel?'selected':''}>${m}</option>`).join('');
-                    } else {
-                        useAnthropicDefaults(selectEl);
-                    }
-                } catch(e) {
-                    useAnthropicDefaults(selectEl);
-                }
-            });
-        }
+    // Fill the model suggestions from the endpoint's /models list (editor fields, not yet saved)
+    function fetchModels() {
+        collectAiDraft();
+        const d = aiDraft;
+        const preset = presetOf(d);
+        const status = document.getElementById('qah-models-status');
+        const list = document.getElementById('qah-prov-models');
+        if (!d.apiKey && !preset.noKey) { alert(t('needKey')); return; }
+        const base = d.baseUrl.replace(/\/$/, '');
+        const ant = d.protocol === 'anthropic';
+        const headers = ant
+            ? { 'x-api-key': d.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }
+            : (d.apiKey ? { 'Authorization': 'Bearer ' + d.apiKey } : {});
+        status.style.color = 'var(--qah-muted)';
+        status.textContent = t('loading');
+        const show = (models, msg) => {
+            if (!list.isConnected) return;
+            list.innerHTML = models.map(m => `<option value="${escHtml(m)}"></option>`).join('');
+            status.textContent = msg;
+        };
+        chrome.runtime.sendMessage({ type: 'API_REQUEST', url: base + (ant ? '/v1/models' : '/models'), method: 'GET', headers }, (resp) => {
+            let models = [];
+            try {
+                const data = JSON.parse(resp.text);
+                models = (data.data || data.models || data).map(m => m.id || m.name || m).filter(m => typeof m === 'string').sort();
+            } catch(e) {}
+            if (models.length) show(models, t('modelsFound', models.length));
+            else if (ant) show(ANTHROPIC_MODELS, t('modelsDefault'));
+            else { show([], t(resp && resp.ok ? 'noModels' : 'loadFailed')); status.style.color = 'var(--qah-err)'; }
+        });
     }
 
-    function useAnthropicDefaults(selectEl) {
-        const defaults = ['claude-opus-4-20250514','claude-sonnet-4-20250514','claude-haiku-4-5-20251001','claude-3-5-sonnet-20241022','claude-3-5-haiku-20241022'];
-        selectEl.innerHTML = defaults.map(m => `<option value="${m}" ${m===config.anthropicModel?'selected':''}>${m}</option>`).join('');
-    }
-
-    // Read the config form fields into `config` (without persisting)
+    // Read the Settings-tab fields into `config` (without persisting); the provider editor keeps its draft
     function collectConfigFields() {
-        if (config.provider === 'openai') {
-            config.baseUrl = document.getElementById('qah-base-url').value.trim();
-            config.apiKey = document.getElementById('qah-api-key').value.trim();
-            config.model = document.getElementById('qah-model').value.trim();
-        } else {
-            config.anthropicBaseUrl = document.getElementById('qah-anthropic-url').value.trim();
-            config.anthropicKey = document.getElementById('qah-anthropic-key').value.trim();
-            config.anthropicModel = document.getElementById('qah-anthropic-model').value.trim();
-        }
+        collectAiDraft();
         config.hotkeyToggle = document.getElementById('qah-hotkey-toggle').value.trim() || 'Alt+Q';
         config.hotkeyScreenshot = document.getElementById('qah-hotkey-screenshot').value.trim() || 'Alt+A';
         config.allowedDomains = document.getElementById('qah-domains').value.trim();
@@ -1225,12 +1393,21 @@ export function main() {
             answerArea.innerHTML = `<div class="qah-answer-box error">${t('errNoDocs')}</div>`;
             return;
         }
-        if (config.provider === 'openai' && !config.apiKey) {
-            answerArea.innerHTML = `<div class="qah-answer-box error">${t('errNoKey')}</div>`;
+        const prov = activeProvider();
+        if (!prov) {
+            answerArea.innerHTML = `<div class="qah-answer-box error">${t('errNoProvider')}</div>`;
             return;
         }
-        if (config.provider === 'anthropic' && !config.anthropicKey) {
-            answerArea.innerHTML = `<div class="qah-answer-box error">${t('errNoAntKey')}</div>`;
+        if (!prov.apiKey && !presetOf(prov).noKey) {
+            answerArea.innerHTML = `<div class="qah-answer-box error">${t('errNoKey', escHtml(providerName(prov)))}</div>`;
+            return;
+        }
+        if (!prov.model) {
+            answerArea.innerHTML = `<div class="qah-answer-box error">${t('errNoModel', escHtml(providerName(prov)))}</div>`;
+            return;
+        }
+        if (screenshots.length && presetOf(prov).vision === false) {
+            answerArea.innerHTML = `<div class="qah-answer-box error">${t('errNoVision', escHtml(providerName(prov)))}</div>`;
             return;
         }
 
@@ -1279,10 +1456,10 @@ export function main() {
         setLogoThinking(true);
         try {
             let answer;
-            if (config.provider === 'openai') {
-                answer = await callOpenAI(systemPrompt, userText, screenshots);
+            if (prov.protocol === 'anthropic') {
+                answer = await callAnthropic(prov, systemPrompt, userText, screenshots);
             } else {
-                answer = await callAnthropic(systemPrompt, userText, screenshots);
+                answer = await callOpenAI(prov, systemPrompt, userText, screenshots);
             }
             try { await ensureLib('lib/marked.min.js'); } catch(e) { /* fall back to plain text */ }
             answerArea.innerHTML = `<div class="qah-answer-box"><div class="qah-answer-head">${chip('answer', 'gold')}<span>${t('answerTitle')}</span></div>${renderMarkdown(answer)}</div>`;
@@ -1298,9 +1475,9 @@ export function main() {
         return total > 1 ? { type: 'text', text: t('imageN', i + 1, total) } : null;
     }
 
-    function callOpenAI(system, user, images) {
+    function callOpenAI(prov, system, user, images) {
         return new Promise((resolve, reject) => {
-            const url = config.baseUrl.replace(/\/$/, '') + '/chat/completions';
+            const url = prov.baseUrl.replace(/\/$/, '') + '/chat/completions';
             const userContent = [];
             images.forEach((b64, i) => {
                 const label = imageLabel(i, images.length);
@@ -1313,12 +1490,10 @@ export function main() {
                 type: 'API_REQUEST',
                 url: url,
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + config.apiKey
-                },
+                headers: Object.assign({ 'Content-Type': 'application/json' },
+                    prov.apiKey ? { 'Authorization': 'Bearer ' + prov.apiKey } : {}),
                 body: JSON.stringify({
-                    model: config.model,
+                    model: prov.model,
                     messages: [
                         { role: 'system', content: system },
                         { role: 'user', content: userContent }
@@ -1338,9 +1513,9 @@ export function main() {
         });
     }
 
-    function callAnthropic(system, user, images) {
+    function callAnthropic(prov, system, user, images) {
         return new Promise((resolve, reject) => {
-            const url = config.anthropicBaseUrl.replace(/\/$/, '') + '/v1/messages';
+            const url = prov.baseUrl.replace(/\/$/, '') + '/v1/messages';
             const userContent = [];
             images.forEach((b64, i) => {
                 const label = imageLabel(i, images.length);
@@ -1355,12 +1530,12 @@ export function main() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-api-key': config.anthropicKey,
+                    'x-api-key': prov.apiKey,
                     'anthropic-version': '2023-06-01',
                     'anthropic-dangerous-direct-browser-access': 'true'
                 },
                 body: JSON.stringify({
-                    model: config.anthropicModel,
+                    model: prov.model,
                     max_tokens: 4096,
                     system: system,
                     messages: [
@@ -1415,6 +1590,7 @@ export function main() {
     // Re-render every tab (also used after a language change). Keeps the typed
     // question and the last answer, which renderAnswerTab() would otherwise wipe.
     function renderAll() {
+        collectAiDraft(); // keep unsaved provider-editor input
         const q = document.getElementById('qah-question');
         const a = document.getElementById('qah-answer-area');
         const qVal = q ? q.value : '';

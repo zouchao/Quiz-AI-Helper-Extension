@@ -21,7 +21,8 @@ Quiz AI Helper — 浏览器扩展 (Manifest V3，基于 [WXT](https://wxt.dev) 
   - `index.js` — 入口：`defineContentScript()` + 导入 `style.css`，调用 `main()`
   - `main.js` — `export function main()`：UI 面板、答题逻辑、域名门控、配置管理（整个函数体即原来的 IIFE）
   - `i18n.js` — `export const I18N`（中/英词典）
-  - `icons.js` — logo / 线性图标 SVG 及 `icon()` / `chip()` / `groupTitle()` / `fileTone()` 助手，ES module 导出
+  - `icons.js` — logo / 线性图标 SVG 及 `icon()` / `chip()` / `groupTitle()` / `fileTone()` 助手，ES module 导出；`BRAND_PATHS` + `brandIcon()` 是服务商单色品牌图标（来自 `@lobehub/icons-static-svg`，MIT，fill=currentColor）
+  - `providers.js` — `PROVIDER_PRESETS`（AI 服务商预设：协议、默认 endpoint、推荐模型、Key 申请链接、`vision:false` / `noKey` 标记）
   - `style.css` — 面板全部样式；选择器一律以 `#qah-btn` / `#qah-panel` 限定，避免污染宿主页面
 - `public/` — 原样复制到构建产物根目录（路径不变）：`_locales/`、`lib/`、`images/`
 - `public/images/icons/` — 扩展图标（16/32/48/128），由 `icons.js` 里的 `LOGO_SVG` 渲染而来；改 logo 时同步重新导出。logo 动画纯 CSS（`style.css` 里 `.qah-logo` 规则）：待机星光闪烁 / hover 弹出 / `setLogoThinking()` 在 `askAI()` 期间让金色圆点扫描选项，结束时落定打勾
@@ -43,8 +44,8 @@ Quiz AI Helper — 浏览器扩展 (Manifest V3，基于 [WXT](https://wxt.dev) 
 - 后台代理的库注入有白名单（`ALLOWED_LIBS`），新增库要同步改
 - i18n（中/英）：所有面板文案和提示词都在 `entrypoints/content/i18n.js`（`I18N.zh` / `.en`）里，用 `t(key, ...args)` 读取（占位符 `{0}`）；新增文案必须两套同时加（`npm run check:i18n` 校验两套 key、非空、占位符一致，CI 里会跑）。`config.language`（auto/zh/en）决定界面和提示词语言，auto 按 `navigator.language` 判断；`config.answerLang`（question/ui/zh/en）决定 AI 回答语言，默认跟随题目。切换语言走 `renderAll()`（会保留已输入的题目和答案）。商店名称/描述在 `public/_locales/*/messages.json`，`wxt.config.js` 用 `__MSG_*__` 引用
 - 截图是列表 `screenshots`（base64 JPEG，上限 `MAX_SHOTS`=20）：截图 / 粘贴都走 `addShot()` → `toJpegBase64()`（长边缩到 `SHOT_MAX_EDGE`=2576，透明底填白）；缩略图（固定 5 列网格，拖动或 ‹ › 排序走 `moveShot()`，缩略图 × 和预览里的删除都走 `removeShot()`）由 `renderShots()` 单独重绘，不要为增删截图调用 `renderAnswerTab()`（会清空已输入的题目）。多张时每张图前加 `imageN` 文本标签，按顺序发送
-- AI 服务商两种：`openai`（兼容任意 `/chat/completions` 端点）和 `anthropic`（原生 Messages API）
-- 面板标签：答题 / 文档 / **AI**（`renderAiTab()`：服务商、Base URL、Key、模型、回答语言）/ 设置（`renderConfigTab()`：界面语言、生效域名、快捷键、同步）/ 支持。AI 和设置各有保存按钮，都调 `saveConfig(statusId)`；`collectConfigFields()` 会同时读两个标签的输入框（隐藏的标签仍在 DOM 中），所以任一保存都会保存全部
+- AI 服务商：`config.providers`（`[{id, preset, name, protocol, baseUrl, apiKey, model}]`）+ `config.activeProvider`，可存多个、同时只用一个。协议两种：`openai`（`{baseUrl}/chat/completions`）和 `anthropic`（`{baseUrl}/v1/messages`），`askAI()` 按 `activeProvider().protocol` 分支。新增预设只改 `providers.js`（+ 品牌图标 + 需要翻译的 `nameKey`）。旧版平铺字段（`provider` / `apiKey` / `anthropic*`…）由 `applyStoredConfig()` 迁移成条目，所有读入存储配置的地方都要走它，不要直接 `Object.assign(config, …)`
+- 面板标签：答题（右上角 ≥2 个服务商时有快速切换 `renderQuickProvider()`）/ 文档 / **AI**（`renderAiTab()`：三个视图 `aiView` = list 服务商卡片 / pick 预设网格 / edit 编辑表单，编辑的是副本 `aiDraft`，点保存才写回；回答语言改动即存）/ 设置（`renderConfigTab()`：界面语言、生效域名、快捷键、同步，保存调 `saveConfig(statusId)`）/ 支持
 
 ## TODO / Feature Ideas
 

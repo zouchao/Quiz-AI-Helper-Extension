@@ -15,9 +15,9 @@ A Chrome extension (Manifest V3): load reference documents, and the AI reads the
 - 📄 **Document-based Q&A**: load PDF / DOCX / TXT / Markdown (local files or URLs); the AI answers from their content
 - 📸 **Screenshot answering**: capture the current page in one click, or paste a clipboard screenshot with `Ctrl+V`; add up to 20 screenshots for a question that spans several screens, and a vision model reads them in order and answers
 - 🆓 **No-document mode**: skip the references and let the AI answer from its own knowledge
-- 🤖 **Multiple providers**
-  - OpenAI and any compatible API (custom Base URL and model, default `gpt-4o`)
-  - Anthropic Claude (default `claude-sonnet-4`)
+- 🤖 **Multiple providers**: save several AI providers and switch the one in use with a click (also from the Answer tab)
+  - Built-in presets: OpenAI, Anthropic, Gemini, DeepSeek, Qwen, Kimi, Zhipu GLM, SiliconFlow, OpenRouter, Ollama (local), each with its icon, default endpoint and suggested model
+  - Or add any custom OpenAI-compatible (`/chat/completions`) or Anthropic endpoint
 - 🈯 **English / 中文**: UI, prompts and store listing are bilingual. Follows the browser language by default and can be switched manually; the AI's answer language can follow the question (default), follow the UI, or be fixed to Chinese or English
 - ☁️ **Sync across devices** (optional): turn it on in Settings to sync your settings, API keys included, through your Chrome account. Requires Chrome sync with Extensions enabled; loaded documents are never synced
 - ⌨️ **Custom hotkeys**: `Alt+Q` toggles the panel and `Alt+A` takes a screenshot by default; changes apply immediately
@@ -70,7 +70,7 @@ After installing, a floating button appears at the bottom right of any enabled p
 
 ### 2. Configure the AI provider
 
-In the **AI** tab, choose the provider, enter your API key and pick a model (or click Refresh to fetch the available ones); the AI answer language is set here too. The **Settings** tab holds the interface language, theme, active domains, hotkeys and sync:
+In the **AI** tab, click **Add**, pick a preset (or Custom), enter your API key, pick a model (or click Refresh to fetch the available ones) and save. Add as many as you like and click a card to switch the one in use. The AI answer language is set here too. The **Settings** tab holds the interface language, theme, active domains, hotkeys and sync:
 
 ![AI tab](docs/screenshots/04-ai-tab.png)
 
