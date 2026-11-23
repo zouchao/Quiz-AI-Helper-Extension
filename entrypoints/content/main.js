@@ -876,6 +876,7 @@ export function main() {
     let aiView = 'list'; // 'list' | 'pick' | 'edit'
     let aiDraft = null;
     let aiDraftIsNew = false;
+    let aiModels = [];   // model ids fetched for the provider being edited (combobox options)
 
     const activeProvider = () => config.providers.find(p => p.id === config.activeProvider) || null;
     const presetName = (preset) => preset.nameKey ? t(preset.nameKey) : preset.name;
@@ -969,6 +970,7 @@ export function main() {
                 e.stopPropagation();
                 aiDraft = Object.assign({}, config.providers.find(p => p.id === b.dataset.edit));
                 aiDraftIsNew = false;
+                aiModels = [];
                 aiView = 'edit';
                 renderAiTab();
             };
@@ -1007,6 +1009,7 @@ export function main() {
             b.onclick = () => {
                 aiDraft = newProvider(b.dataset.preset);
                 aiDraftIsNew = true;
+                aiModels = [];
                 aiView = 'edit';
                 renderAiTab();
             };
@@ -1049,8 +1052,12 @@ export function main() {
             <div class="qah-field">
                 <label>${t('modelLabel')}</label>
                 <div style="display:flex;gap:6px">
-                    <input id="qah-prov-model" list="qah-prov-models" value="${escHtml(d.model)}" placeholder="${t('provModelPh')}" style="flex:1">
-                    <datalist id="qah-prov-models"></datalist>
+                    <div class="qah-combo" id="qah-model-combo">
+                        <input id="qah-prov-model" value="${escHtml(d.model)}" placeholder="${t('provModelPh')}" autocomplete="off" spellcheck="false"
+                            role="combobox" aria-expanded="false" aria-controls="qah-model-menu" aria-autocomplete="list">
+                        <button type="button" class="qah-combo-toggle" id="qah-model-toggle" tabindex="-1" aria-label="${t('modelShowAll')}" title="${t('modelShowAll')}">${icon('chevron')}</button>
+                        <div class="qah-combo-menu" id="qah-model-menu" role="listbox"></div>
+                    </div>
                     <button class="qah-btn secondary" id="qah-fetch-models" style="padding:6px 10px;font-size:11px">${t('refreshBtn')}</button>
                 </div>
                 <span id="qah-models-status" style="display:block;font-size:11px;color:var(--qah-muted);margin-top:4px"></span>
@@ -1063,7 +1070,8 @@ export function main() {
     }
 
     function bindAiEditor() {
-        document.getElementById('qah-fetch-models').onclick = fetchModels;
+        document.getElementById('qah-fetch-models').onclick = () => fetchModels();
+        bindModelCombo();
         document.getElementById('qah-prov-protocol').onchange = (e) => {
             collectAiDraft();
             aiDraft.protocol = e.target.value;
@@ -1158,13 +1166,86 @@ export function main() {
         e.target.value = parts.join('+');
     }
 
-    // Fill the model suggestions from the endpoint's /models list (editor fields, not yet saved)
-    function fetchModels() {
+    // Model picker: free-text input + dropdown of aiModels. The arrow always lists every
+    // model (current value highlighted); typing filters. A native <datalist> can't do this:
+    // it filters by the input's value, so a prefilled model hides all the others.
+    function bindModelCombo() {
+        const combo = document.getElementById('qah-model-combo');
+        const input = document.getElementById('qah-prov-model');
+        const menu = document.getElementById('qah-model-menu');
+        let hi = -1; // highlighted option index
+        const items = () => [...menu.querySelectorAll('.qah-combo-opt')];
+        const setHi = (i) => {
+            const opts = items();
+            hi = opts.length ? (i + opts.length) % opts.length : -1;
+            opts.forEach((o, n) => o.classList.toggle('hi', n === hi));
+            const o = opts[hi]; // scroll the menu only (scrollIntoView would also scroll the panel)
+            if (o && o.offsetTop < menu.scrollTop) menu.scrollTop = o.offsetTop - 4;
+            else if (o && o.offsetTop + o.offsetHeight > menu.scrollTop + menu.clientHeight) menu.scrollTop = o.offsetTop + o.offsetHeight - menu.clientHeight + 4;
+        };
+        // The tab body scrolls and clips overflow: open upward when there is more room above
+        const place = () => {
+            const box = combo.closest('.qah-section').getBoundingClientRect();
+            const r = input.getBoundingClientRect();
+            const below = box.bottom - r.bottom - 10, above = r.top - box.top - 10;
+            const up = below < 180 && above > below;
+            combo.classList.toggle('up', up);
+            menu.style.maxHeight = Math.max(80, Math.min(240, up ? above : below)) + 'px';
+        };
+        const close = () => { combo.classList.remove('open'); input.setAttribute('aria-expanded', 'false'); hi = -1; };
+        const open = (filter) => {
+            const cur = input.value.trim();
+            const q = filter ? cur.toLowerCase() : '';
+            const list = aiModels.filter(m => m.toLowerCase().includes(q));
+            menu.innerHTML = list.length
+                ? list.map(m => `<div class="qah-combo-opt${m === cur ? ' sel' : ''}" role="option" data-model="${escHtml(m)}">${icon('check')}<span>${escHtml(m)}</span></div>`).join('')
+                : `<div class="qah-combo-empty">${aiModels.length ? t('modelNoMatch') : t('modelNoneYet')}</div>`;
+            combo.classList.add('open');
+            input.setAttribute('aria-expanded', 'true');
+            place();
+            menu.querySelectorAll('.qah-combo-opt').forEach(o => {
+                o.onmousedown = (e) => e.preventDefault(); // keep focus in the input
+                o.onclick = () => { input.value = o.dataset.model; close(); };
+            });
+            setHi(Math.max(0, list.indexOf(cur)));
+        };
+        combo.openAll = () => open(false);
+        document.getElementById('qah-model-toggle').onmousedown = (e) => e.preventDefault();
+        document.getElementById('qah-model-toggle').onclick = () => {
+            if (combo.classList.contains('open')) return close();
+            input.focus();
+            if (!aiModels.length) fetchModels(true); // nothing loaded yet: fetch, then open
+            else open(false);
+        };
+        input.oninput = () => open(true);
+        input.onblur = close;
+        input.onkeydown = (e) => {
+            const isOpen = combo.classList.contains('open');
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (!isOpen) return open(false);
+                setHi(hi + (e.key === 'ArrowDown' ? 1 : -1));
+            } else if (e.key === 'Enter' && isOpen) {
+                e.preventDefault();
+                const opt = items()[hi];
+                if (opt) input.value = opt.dataset.model;
+                close();
+            } else if (e.key === 'Escape' && isOpen) {
+                e.preventDefault();
+                e.stopPropagation();
+                close();
+            }
+        };
+    }
+
+    // Load the endpoint's /models list into the model picker (editor fields, not yet saved).
+    // openAfter: show the dropdown once loaded (used by the arrow when nothing was loaded).
+    function fetchModels(openAfter) {
         collectAiDraft();
         const d = aiDraft;
         const preset = presetOf(d);
         const status = document.getElementById('qah-models-status');
-        const list = document.getElementById('qah-prov-models');
+        const combo = document.getElementById('qah-model-combo');
         if (!d.apiKey && !preset.noKey) { alert(t('needKey')); return; }
         const base = d.baseUrl.replace(/\/$/, '');
         const ant = d.protocol === 'anthropic';
@@ -1174,9 +1255,10 @@ export function main() {
         status.style.color = 'var(--qah-muted)';
         status.textContent = t('loading');
         const show = (models, msg) => {
-            if (!list.isConnected) return;
-            list.innerHTML = models.map(m => `<option value="${escHtml(m)}"></option>`).join('');
+            if (!combo.isConnected) return;
+            aiModels = models;
             status.textContent = msg;
+            if (openAfter || models.length) combo.openAll();
         };
         chrome.runtime.sendMessage({ type: 'API_REQUEST', url: base + (ant ? '/v1/models' : '/models'), method: 'GET', headers }, (resp) => {
             let models = [];
