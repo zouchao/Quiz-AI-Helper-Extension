@@ -930,10 +930,7 @@ export function main() {
                 <div class="qah-chip coral" style="width:44px;height:44px;border-radius:14px;margin-bottom:10px"><svg class="qah-ic" style="width:22px;height:22px" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${ICON_PATHS.heart}</svg></div>
                 <div style="font-size:16px;font-weight:600;color:var(--qah-ink);margin-bottom:8px">${t('supportTitle')}</div>
                 <p style="color:var(--qah-muted);font-size:12px;margin-bottom:16px;line-height:1.6">${t('supportText')}</p>
-                <div class="qah-pay">
-                    <figure><img src="${chrome.runtime.getURL('images/buy-me-a-coffee.jpeg')}" alt="${t('payWechat')}"><figcaption>${t('payWechat')}</figcaption></figure>
-                    <figure><img src="${chrome.runtime.getURL('images/alipay.jpeg')}" alt="${t('payAlipay')}"><figcaption>${t('payAlipay')}</figcaption></figure>
-                </div>
+                <img class="qah-pay" src="${chrome.runtime.getURL('images/support-qr.png')}" alt="${t('payWechat')} / ${t('payAlipay')}">
                 <p style="color:var(--qah-muted);font-size:12px;margin-top:16px">${t('author')}</p>
                 <p style="color:var(--qah-muted);font-size:11px;margin-top:4px">${t('contact')}</p>
             </div>
