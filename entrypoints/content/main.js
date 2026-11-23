@@ -1557,85 +1557,94 @@ export function main() {
         return total > 1 ? { type: 'text', text: t('imageN', i + 1, total) } : null;
     }
 
-    function callOpenAI(prov, system, user, images) {
-        return new Promise((resolve, reject) => {
-            const url = prov.baseUrl.replace(/\/$/, '') + '/chat/completions';
-            const userContent = [];
-            images.forEach((b64, i) => {
-                const label = imageLabel(i, images.length);
-                if (label) userContent.push(label);
-                userContent.push({ type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + b64 } });
-            });
-            userContent.push({ type: 'text', text: user });
+    // Newer models reject a custom temperature (Claude Opus 4.7+ / Sonnet 5+ / Haiku 5.5 / Fable /
+    // Mythos, OpenAI o-series / gpt-5), so it is only sent to models known to accept it.
+    // Anything else that refuses it (relays, renamed ids) is retried once without it.
+    const NO_TEMPERATURE = /claude-(opus-(4-[7-9]|[5-9])|sonnet-[5-9]|haiku-[5-9]|fable|mythos)|(^|\/)(o\d|gpt-5)/i;
 
+    // POST via the background proxy; resolves with the parsed JSON body
+    function postJson(url, headers, body) {
+        return new Promise((resolve, reject) => {
             chrome.runtime.sendMessage({
-                type: 'API_REQUEST',
-                url: url,
-                method: 'POST',
-                headers: Object.assign({ 'Content-Type': 'application/json' },
-                    prov.apiKey ? { 'Authorization': 'Bearer ' + prov.apiKey } : {}),
-                body: JSON.stringify({
-                    model: prov.model,
-                    messages: [
-                        { role: 'system', content: system },
-                        { role: 'user', content: userContent }
-                    ],
-                    temperature: 0.1
-                })
+                type: 'API_REQUEST', url, method: 'POST',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
+                body: JSON.stringify(body)
             }, (resp) => {
                 if (!resp || !resp.ok) { reject(new Error(resp ? resp.error : t('netFail'))); return; }
-                try {
-                    const data = JSON.parse(resp.text);
-                    if (data.error) reject(new Error(data.error.message));
-                    else resolve(data.choices[0].message.content);
-                } catch(e) {
+                let data;
+                try { data = JSON.parse(resp.text); } catch(e) {
                     reject(new Error(t('parseFail', (resp.text || '').slice(0, 200))));
+                    return;
                 }
+                if (data.error) reject(new Error(data.error.message || JSON.stringify(data.error)));
+                else resolve(data);
             });
         });
     }
 
-    function callAnthropic(prov, system, user, images) {
-        return new Promise((resolve, reject) => {
-            const url = prov.baseUrl.replace(/\/$/, '') + '/v1/messages';
-            const userContent = [];
-            images.forEach((b64, i) => {
-                const label = imageLabel(i, images.length);
-                if (label) userContent.push(label);
-                userContent.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } });
-            });
-            userContent.push({ type: 'text', text: user });
+    async function postWithTemperature(prov, url, headers, body) {
+        if (NO_TEMPERATURE.test(prov.model)) return postJson(url, headers, body);
+        try {
+            return await postJson(url, headers, Object.assign({ temperature: 0.1 }, body));
+        } catch(e) {
+            if (!/temperature/i.test(e.message)) throw e;
+            return postJson(url, headers, body);
+        }
+    }
 
-            chrome.runtime.sendMessage({
-                type: 'API_REQUEST',
-                url: url,
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': prov.apiKey,
-                    'anthropic-version': '2023-06-01',
-                    'anthropic-dangerous-direct-browser-access': 'true'
-                },
-                body: JSON.stringify({
-                    model: prov.model,
-                    max_tokens: 4096,
-                    system: system,
-                    messages: [
-                        { role: 'user', content: userContent }
-                    ],
-                    temperature: 0.1
-                })
-            }, (resp) => {
-                if (!resp || !resp.ok) { reject(new Error(resp ? resp.error : t('netFail'))); return; }
-                try {
-                    const data = JSON.parse(resp.text);
-                    if (data.error) reject(new Error(data.error.message));
-                    else resolve(data.content[0].text);
-                } catch(e) {
-                    reject(new Error(t('parseFail', (resp.text || '').slice(0, 200))));
-                }
-            });
+    async function callOpenAI(prov, system, user, images) {
+        const userContent = [];
+        images.forEach((b64, i) => {
+            const label = imageLabel(i, images.length);
+            if (label) userContent.push(label);
+            userContent.push({ type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + b64 } });
         });
+        userContent.push({ type: 'text', text: user });
+
+        const data = await postWithTemperature(prov,
+            prov.baseUrl.replace(/\/$/, '') + '/chat/completions',
+            prov.apiKey ? { 'Authorization': 'Bearer ' + prov.apiKey } : {},
+            {
+                model: prov.model,
+                messages: [
+                    { role: 'system', content: system },
+                    { role: 'user', content: userContent }
+                ]
+            });
+        const msg = data.choices && data.choices[0] && data.choices[0].message;
+        if (!msg || !msg.content) throw new Error(t('emptyAnswer'));
+        return msg.content;
+    }
+
+    async function callAnthropic(prov, system, user, images) {
+        const userContent = [];
+        images.forEach((b64, i) => {
+            const label = imageLabel(i, images.length);
+            if (label) userContent.push(label);
+            userContent.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } });
+        });
+        userContent.push({ type: 'text', text: user });
+
+        const data = await postWithTemperature(prov,
+            prov.baseUrl.replace(/\/$/, '') + '/v1/messages',
+            {
+                'x-api-key': prov.apiKey,
+                'anthropic-version': '2023-06-01',
+                'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            {
+                model: prov.model,
+                max_tokens: 16000, // newer models always think first; leave room for the answer
+                system: system,
+                messages: [
+                    { role: 'user', content: userContent }
+                ]
+            });
+        if (data.stop_reason === 'refusal') throw new Error(t('refused'));
+        // Thinking models put a thinking block first, so collect the text blocks
+        const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n\n');
+        if (!text) throw new Error(t('emptyAnswer'));
+        return text;
     }
 
     function renderMarkdown(text) {
