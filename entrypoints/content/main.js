@@ -1125,9 +1125,15 @@ export function main() {
         const box = document.getElementById('qah-quick-provider');
         if (!box) return;
         if (config.providers.length < 2) { box.innerHTML = ''; return; }
-        box.innerHTML = `<select aria-label="${t('providerLabel')}" title="${t('providerLabel')}">${config.providers.map(p =>
-            `<option value="${p.id}" ${p.id === config.activeProvider ? 'selected' : ''}>${escHtml(providerName(p))}${p.model ? ' · ' + escHtml(p.model) : ''}</option>`
-        ).join('')}</select>`;
+        const cur = activeProvider();
+        const label = (p) => providerName(p) + (p.model ? ' · ' + p.model : '');
+        // Native select with its own arrow hidden; brand icon + chevron are overlaid (pointer-events:none)
+        box.innerHTML = `
+            <span class="qah-quick-icon">${cur ? providerIcon(presetOf(cur)) : ''}</span>
+            <select aria-label="${t('providerLabel')}" title="${cur ? escHtml(label(cur)) : ''}">${config.providers.map(p =>
+                `<option value="${p.id}" ${p.id === config.activeProvider ? 'selected' : ''}>${escHtml(label(p))}</option>`
+            ).join('')}</select>
+            <span class="qah-quick-chevron">${icon('chevron')}</span>`;
         box.querySelector('select').onchange = (e) => {
             collectAiDraft();
             setActiveProvider(e.target.value);

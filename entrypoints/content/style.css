@@ -161,7 +161,15 @@
 .qah-prov-note .qah-ic{width:13px;height:13px;margin-top:1px}
 .qah-field select:disabled{opacity:.6}
 #qah-quick-provider:empty{display:none}
-#qah-quick-provider select{max-width:170px;padding:5px 6px;border:1px solid var(--qah-line);border-radius:6px;font-size:11px;color:var(--qah-text);background:var(--qah-bg);font-family:inherit}
+#qah-quick-provider{position:relative;display:inline-flex;align-items:center}
+#qah-quick-provider select{appearance:none;-webkit-appearance:none;max-width:210px;height:32px;padding:0 30px 0 32px;border:1px solid var(--qah-line);border-radius:6px;font-size:12px;color:var(--qah-text);background:var(--qah-bg);font-family:inherit;cursor:pointer;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;transition:background .15s,border-color .15s}
+#qah-quick-provider select:hover{background:var(--qah-soft);border-color:var(--qah-line-2)}
+#qah-quick-provider select:focus{outline:none;border-color:var(--qah-ink);box-shadow:0 0 0 3px var(--qah-gold-soft)}
+#qah-quick-provider .qah-quick-icon,#qah-quick-provider .qah-quick-chevron{position:absolute;top:50%;transform:translateY(-50%);display:flex;pointer-events:none}
+#qah-quick-provider .qah-quick-icon{left:10px;color:var(--qah-ink)}
+#qah-quick-provider .qah-quick-icon .qah-ic{width:15px;height:15px}
+#qah-quick-provider .qah-quick-chevron{right:10px;color:var(--qah-muted)}
+#qah-quick-provider .qah-quick-chevron .qah-ic{width:14px;height:14px}
 /* Model combobox (provider editor): input + arrow, dropdown lists every fetched model */
 .qah-combo{position:relative;flex:1;min-width:0}
 .qah-field .qah-combo input{padding-right:32px}
