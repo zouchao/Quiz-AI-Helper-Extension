@@ -8,7 +8,7 @@
 
 **English** | [中文](README.zh-CN.md)
 
-A Chrome extension (Manifest V3): load reference documents, and the AI reads them and answers the quiz questions on the page. Supports screenshot recognition, multiple document formats, and OpenAI / Anthropic or any compatible API.
+A browser extension (Manifest V3) for Chrome, Edge, Firefox and other Chromium browsers: load reference documents, and the AI reads them and answers the quiz questions on the page. Supports screenshot recognition, multiple document formats, and OpenAI / Anthropic or any compatible API.
 
 ## Features
 
@@ -50,6 +50,8 @@ A Chrome extension (Manifest V3): load reference documents, and the AI reads the
 
 Run `npm run dev` (or `npm run dev:firefox`), then load `.output/chrome-mv3-dev` (or `firefox-mv3-dev`) once as an unpacked extension; it rebuilds and reloads the extension on every change. `npm run zip` / `npm run zip:firefox` produce store-ready zips in `.output/`.
 
+After UI changes, `npm run screenshots` rebuilds and regenerates the README screenshots (EN + ZH) in `docs/screenshots/` with Playwright, against a mock quiz page and mock AI API (no key needed; macOS, run `npx playwright install chromium` once).
+
 ### Releasing
 
 Every push and PR is built and checked by GitHub Actions. To publish a release, bump the version and push a matching tag; the workflow attaches the Chrome / Firefox / Edge zips to a GitHub Release:
@@ -70,17 +72,23 @@ After installing, a floating button appears at the bottom right of any enabled p
 
 ### 2. Configure the AI provider
 
-In the **AI** tab, click **Add**, pick a preset (or Custom), enter your API key, pick a model (or click Refresh to fetch the available ones) and save. Add as many as you like and click a card to switch the one in use. The AI answer language is set here too. The **Settings** tab holds the interface language, theme, active domains, hotkeys and sync:
+In the **AI** tab, click **Add** and pick a preset (or Custom):
 
-![AI tab](docs/screenshots/04-ai-tab.png)
+<img src="docs/screenshots/07-ai-presets.png" alt="Choose a provider" width="520">
 
-![Settings tab](docs/screenshots/05-settings-tab.png)
+Enter your API key (each preset links to the page where you get one), pick a model (or click Refresh to fetch the available ones) and save. Add as many as you like and click a card to switch the one in use; with two or more saved, the Answer tab also gets a quick switcher. The AI answer language is set here too:
+
+<img src="docs/screenshots/04-ai-tab.png" alt="AI tab" width="520">
+
+The **Settings** tab holds the interface language, theme, active domains, hotkeys and sync:
+
+<img src="docs/screenshots/05-settings-tab.png" alt="Settings tab" width="520">
 
 ### 3. Load reference documents (optional)
 
 In the **Docs** tab, upload local files (PDF / Word / TXT / Markdown) or paste a link. Multiple selection is supported, and web pages and PDFs are detected automatically:
 
-![Docs tab](docs/screenshots/03-docs-tab.png)
+<img src="docs/screenshots/03-docs-tab.png" alt="Docs tab" width="520">
 
 You can also click **Scan this page** to detect PDFs embedded in the page (`iframe` / `embed` / links) and load them as references in one click. PDFs inside cross-origin iframes are found too: the extension runs inside each iframe and relays the results upward through messages (nested iframes are supported). Wait for the page, including its iframes, to finish loading before scanning.
 
@@ -96,7 +104,7 @@ Screenshots and pastes are added to a list rather than replacing each other, so 
 
 Then click **Ask AI** to get the answer:
 
-![Answer tab](docs/screenshots/02-answer-tab.png)
+<img src="docs/screenshots/02-answer-tab.png" alt="Answer tab" width="520">
 
 ## Language settings
 
@@ -109,7 +117,7 @@ Two separate options:
 
 In the **Settings** tab, pick **Auto** (follows the system light/dark setting, default), **Light** or **Dark**. The change applies immediately.
 
-![Dark theme](docs/screenshots/06-dark-theme.png)
+<img src="docs/screenshots/06-dark-theme.png" alt="Dark theme" width="520">
 
 ## Active domains
 
@@ -125,7 +133,7 @@ Leave it empty to enable all sites again.
 ## Notes
 
 - Screenshots require the current tab to be active.
-- Only vision-capable models (such as `gpt-4o`) can read questions from screenshots.
+- Only vision-capable models (such as `gpt-4o`, Claude, Gemini, `qwen-vl-max`) can read questions from screenshots. The DeepSeek API does not accept images, so with it type the question instead; for Ollama, use a vision model such as `qwen2.5vl`.
 - The third-party libraries for PDF / DOCX parsing and Markdown rendering are injected on demand, only on first use, so everyday browsing is unaffected.
 
 ## Project structure
@@ -142,13 +150,16 @@ Built with [WXT](https://wxt.dev); the manifest is generated per browser from `w
 │       ├── index.js       # Content script entry (matches / frames)
 │       ├── main.js        # UI panel, answering logic
 │       ├── i18n.js        # Chinese / English strings and prompt dictionaries
-│       ├── icons.js       # Logo and line-icon SVGs
+│       ├── icons.js       # Logo, line-icon and provider brand SVGs
+│       ├── providers.js   # AI provider presets (endpoint, model, key link)
 │       └── style.css      # Panel styles
 ├── public/                # Copied as-is into the build
 │   ├── _locales/          # Store name and description (zh_CN / en)
 │   ├── lib/               # Third-party libraries (pdf.js / marked / mammoth)
 │   └── images/            # Extension icons, donation QR codes
-├── scripts/check-i18n.mjs # Checks zh / en strings match (run in CI)
+├── scripts/
+│   ├── check-i18n.mjs     # Checks zh / en strings match (run in CI)
+│   └── screenshots.mjs    # Regenerates docs/screenshots (npm run screenshots)
 └── docs/screenshots/      # README screenshots
 ```
 

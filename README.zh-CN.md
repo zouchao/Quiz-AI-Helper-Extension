@@ -8,7 +8,7 @@
 
 **中文** | [English](README.md)
 
-一个 Chrome 扩展（Manifest V3）：加载参考文档后，AI 理解文档内容并根据页面上的题目自动作答。支持截图识题、多种文档格式，可接入 OpenAI / Anthropic 或任意兼容 API。
+一个浏览器扩展（Manifest V3，支持 Chrome / Edge / Firefox 等）：加载参考文档后，AI 理解文档内容并根据页面上的题目自动作答。支持截图识题、多种文档格式，可接入 OpenAI / Anthropic 或任意兼容 API。
 
 ## 功能特性
 
@@ -50,6 +50,8 @@
 
 运行 `npm run dev`（或 `npm run dev:firefox`），然后把 `.output/chrome-mv3-dev`（或 `firefox-mv3-dev`）作为已解压扩展加载一次，之后改代码会自动重新构建并重载扩展。`npm run zip` / `npm run zip:firefox` 在 `.output/` 下生成可上传商店的 zip。
 
+改了界面后，`npm run screenshots` 会重新构建，并用 Playwright 在模拟的题目页面和 AI 接口上重新生成 `docs/screenshots/` 里的中英文 README 截图（无需 API Key；仅限 macOS，首次需运行 `npx playwright install chromium`）。
+
 ### 发布
 
 每次 push 和 PR 都会由 GitHub Actions 自动构建并检查。要发布新版本，先改版本号再推送对应的 tag，工作流会把 Chrome / Firefox / Edge 的 zip 附加到 GitHub Release：
@@ -70,17 +72,23 @@ git tag v0.2.0 && git push --follow-tags
 
 ### 2. 配置 AI 服务商
 
-在 **AI** 标签中点「添加」，选一个预设（或自定义），填入 API Key、选择模型（或点「刷新列表」拉取可用模型）后保存。可以添加多个，点卡片切换当前使用的服务商。AI 回答语言也在这里设置。**设置** 标签里是界面语言、配色、生效域名、快捷键和跨设备同步：
+在 **AI** 标签中点「添加」，选一个预设（或自定义）：
 
-![AI 标签](docs/screenshots/04-ai-tab-zh.png)
+<img src="docs/screenshots/07-ai-presets-zh.png" alt="选择服务商" width="520">
 
-![设置标签](docs/screenshots/05-settings-tab-zh.png)
+填入 API Key（每个预设都附有申请 Key 的链接），选择模型（或点「刷新列表」拉取可用模型）后保存。可以添加多个，点卡片切换当前使用的服务商；保存了两个及以上时，答题页右上角也能快速切换。AI 回答语言也在这里设置：
+
+<img src="docs/screenshots/04-ai-tab-zh.png" alt="AI 标签" width="520">
+
+**设置** 标签里是界面语言、配色、生效域名、快捷键和跨设备同步：
+
+<img src="docs/screenshots/05-settings-tab-zh.png" alt="设置标签" width="520">
 
 ### 3. 加载参考文档（可选）
 
 在 **文档** 标签中上传本地文件（PDF / Word / TXT / Markdown）或粘贴链接，支持多选和网页链接自动识别：
 
-![文档标签](docs/screenshots/03-docs-tab-zh.png)
+<img src="docs/screenshots/03-docs-tab-zh.png" alt="文档标签" width="520">
 
 也可以点 **扫描当前页面** 自动检测页面内嵌的 PDF（`iframe` / `embed` / 页面链接），一键加载为参考文档。跨域 iframe 中的 PDF 也能扫到：扩展会在每个 iframe 内运行并通过消息中继汇总结果（支持多层嵌套）。注意扫描时需等页面（含 iframe）完全加载。
 
@@ -96,7 +104,7 @@ git tag v0.2.0 && git push --follow-tags
 
 然后点击 **AI 作答** 获取答案：
 
-![答题标签](docs/screenshots/02-answer-tab-zh.png)
+<img src="docs/screenshots/02-answer-tab-zh.png" alt="答题标签" width="520">
 
 ## 语言设置
 
@@ -109,7 +117,7 @@ git tag v0.2.0 && git push --follow-tags
 
 在 **设置** 标签中选择 **跟随系统**（默认，按系统明/暗模式自动切换）、**浅色** 或 **深色**，切换后立即生效。
 
-![深色配色](docs/screenshots/06-dark-theme-zh.png)
+<img src="docs/screenshots/06-dark-theme-zh.png" alt="深色配色" width="520">
 
 ## 生效域名
 
@@ -125,7 +133,7 @@ develop.*.com
 ## 注意事项
 
 - 截图功能需要当前标签页处于激活状态。
-- 使用视觉模型（如 `gpt-4o`）才能识别截图中的题目。
+- 使用视觉模型（如 `gpt-4o`、Claude、Gemini、`qwen-vl-max`）才能识别截图中的题目。DeepSeek 的 API 不支持图片输入，只能手动输入题目；Ollama 请选用视觉模型（如 `qwen2.5vl`）。
 - PDF / DOCX 解析和 Markdown 渲染所需的第三方库为按需加载，仅在首次使用时注入，不影响日常浏览性能。
 
 ## 项目结构
@@ -142,13 +150,16 @@ develop.*.com
 │       ├── index.js       # 内容脚本入口（匹配规则 / frame）
 │       ├── main.js        # UI 面板、答题逻辑
 │       ├── i18n.js        # 中 / 英文案与提示词词典
-│       ├── icons.js       # Logo 与线性图标 SVG
+│       ├── icons.js       # Logo、线性图标与服务商品牌图标 SVG
+│       ├── providers.js   # AI 服务商预设（endpoint、模型、Key 申请链接）
 │       └── style.css      # 面板样式
 ├── public/                # 原样复制进构建产物
 │   ├── _locales/          # 商店名称与描述（zh_CN / en）
 │   ├── lib/               # 第三方库（pdf.js / marked / mammoth）
 │   └── images/            # 扩展图标、赞赏码（微信 / 支付宝）
-├── scripts/check-i18n.mjs # 校验中 / 英文案一致（CI 中运行）
+├── scripts/
+│   ├── check-i18n.mjs     # 校验中 / 英文案一致（CI 中运行）
+│   └── screenshots.mjs    # 重新生成 docs/screenshots（npm run screenshots）
 └── docs/screenshots/      # README 截图
 ```
 
