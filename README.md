@@ -20,6 +20,7 @@ A browser extension (Manifest V3) for Chrome, Edge, Firefox and other Chromium b
   - Or add any custom OpenAI-compatible (`/chat/completions`) or Anthropic endpoint
 - 🈯 **English / 中文**: UI, prompts and store listing are bilingual. Follows the browser language by default and can be switched manually; the AI's answer language can follow the question (default), follow the UI, or be fixed to Chinese or English
 - ☁️ **Sync across devices** (optional): turn it on in Settings to sync your settings, API keys included, through your Chrome account. Requires Chrome sync with Extensions enabled; loaded documents are never synced
+- 🖱️ **Movable floating button**: drag it anywhere if it covers something on the page; the position is remembered per site (Settings → reset)
 - ⌨️ **Custom hotkeys**: `Alt+Q` toggles the panel and `Alt+A` takes a screenshot by default; changes apply immediately
 - 🌐 **Configurable domains**: enabled on all sites by default, or restrict it to specific domains (`*` wildcard supported)
 - 💬 **Rich answers**: Markdown rendering and code display
@@ -66,7 +67,7 @@ git tag v0.2.0 && git push --follow-tags
 
 ### 1. Open the panel
 
-After installing, a floating button appears at the bottom right of any enabled page. Click it (or press `Alt+Q`) to open the panel:
+After installing, a floating button appears at the bottom right of any enabled page. Click it (or press `Alt+Q`) to open the panel. If it covers part of the page, drag it elsewhere: the position is remembered for each site, and the panel opens on the same side as the button:
 
 ![Floating button](docs/screenshots/01-floating-button.png)
 

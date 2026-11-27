@@ -264,8 +264,117 @@ export function main() {
     const uiObserver = new MutationObserver(() => attachUI());
     uiObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open'] });
 
-    btn.onclick = () => panel.classList.toggle('show');
+    btn.onclick = () => {
+        if (btnDragged) { btnDragged = false; return; } // end of a drag, not a click
+        panel.classList.toggle('show');
+    };
     document.getElementById('qah-close').onclick = () => panel.classList.remove('show');
+
+    // ===== Draggable floating button =====
+    // Drag it away from the page's own widgets. The position is per site (hostname) and
+    // per device, in chrome.storage.local `qah_btn_pos` = {host: {x, y}}, never synced:
+    // a good spot depends on the site and the screen. x / y are the distance from the
+    // nearest horizontal / vertical edge (negative = from right / bottom), so the button
+    // stays on its side when the window is resized; it is clamped into the viewport.
+    const BTN_POS_KEY = 'qah_btn_pos';
+    const BTN_MARGIN = 8;    // px kept free between the button and the viewport edge
+    const DRAG_THRESHOLD = 4; // px; less than this is a click
+    let btnPos = null;       // {x, y} for this host, null = default (bottom right)
+    let btnDragged = false;
+
+    const viewport = () => ({ vw: document.documentElement.clientWidth, vh: document.documentElement.clientHeight });
+
+    // Put the button's top-left corner at (left, top), kept inside the viewport.
+    // Uses offsetWidth/Height, which ignore the hover / drag scale transform.
+    function moveBtnTo(left, top) {
+        const { vw, vh } = viewport();
+        const w = btn.offsetWidth || 48, h = btn.offsetHeight || 48;
+        left = Math.round(Math.max(BTN_MARGIN, Math.min(vw - w - BTN_MARGIN, left)));
+        top = Math.round(Math.max(BTN_MARGIN, Math.min(vh - h - BTN_MARGIN, top)));
+        btn.style.left = left + 'px';
+        btn.style.top = top + 'px';
+        btn.style.right = btn.style.bottom = 'auto';
+        return { left, top, w, h, vw, vh };
+    }
+
+    function placeBtn() {
+        // The panel opens on the same side as the button
+        panel.classList.toggle('qah-left', !!btnPos && btnPos.x >= 0);
+        if (!btnPos) { btn.style.left = btn.style.top = btn.style.right = btn.style.bottom = ''; return; }
+        const { vw, vh } = viewport();
+        const w = btn.offsetWidth || 48, h = btn.offsetHeight || 48;
+        moveBtnTo(btnPos.x < 0 ? vw + btnPos.x - w : btnPos.x, btnPos.y < 0 ? vh + btnPos.y - h : btnPos.y);
+    }
+
+    function saveBtnPos() {
+        chrome.storage.local.get(BTN_POS_KEY, (r) => {
+            const all = (r && r[BTN_POS_KEY]) || {};
+            if (btnPos) all[location.hostname] = btnPos; else delete all[location.hostname];
+            chrome.storage.local.set({ [BTN_POS_KEY]: all });
+        });
+    }
+
+    function resetBtnPos() {
+        btnPos = null;
+        placeBtn();
+        saveBtnPos();
+    }
+
+    chrome.storage.local.get(BTN_POS_KEY, (r) => {
+        btnPos = (r && r[BTN_POS_KEY] && r[BTN_POS_KEY][location.hostname]) || null;
+        placeBtn();
+    });
+    window.addEventListener('resize', placeBtn);
+
+    let endDrag = null; // ends the drag in progress, if any
+
+    btn.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        if (endDrag) endDrag();
+        // offsetLeft/Top: the fixed button's layout position, without the hover lift
+        const dx = e.clientX - btn.offsetLeft, dy = e.clientY - btn.offsetTop;
+        const startX = e.clientX, startY = e.clientY;
+        let moving = false;
+        btn.setPointerCapture(e.pointerId);
+        const onMove = (ev) => {
+            if (!moving && Math.hypot(ev.clientX - startX, ev.clientY - startY) < DRAG_THRESHOLD) return;
+            moving = true;
+            btn.classList.add('qah-dragging');
+            moveBtnTo(ev.clientX - dx, ev.clientY - dy);
+        };
+        // lostpointercapture follows pointerup / pointercancel, and also fires when the
+        // release happens outside the window or capture is lost some other way
+        const onUp = () => {
+            btn.removeEventListener('pointermove', onMove);
+            btn.removeEventListener('lostpointercapture', onUp);
+            endDrag = null;
+            if (!moving) return;
+            btn.classList.remove('qah-dragging');
+            btnDragged = true; // swallow the click that follows pointerup (dispatched before timers)
+            setTimeout(() => { btnDragged = false; }, 0);
+            // Store relative to the nearest edges
+            const { left, top, w, h, vw, vh } = moveBtnTo(parseFloat(btn.style.left), parseFloat(btn.style.top));
+            btnPos = {
+                x: left + w / 2 > vw / 2 ? -(vw - left - w) : left,
+                y: top + h / 2 > vh / 2 ? -(vh - top - h) : top
+            };
+            placeBtn();
+            saveBtnPos();
+        };
+        endDrag = onUp;
+        btn.addEventListener('pointermove', onMove);
+        btn.addEventListener('lostpointercapture', onUp);
+    });
+
+    // Moved in another tab of the same site
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== 'local' || !changes[BTN_POS_KEY]) return;
+        const all = changes[BTN_POS_KEY].newValue || {};
+        const next = all[location.hostname] || null;
+        if (JSON.stringify(next) === JSON.stringify(btnPos)) return;
+        btnPos = next;
+        placeBtn();
+    });
 
     const tabContainers = {
         answer: document.getElementById('qah-tab-answer'),
@@ -829,6 +938,14 @@ export function main() {
                 </div>
             </div>
             <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--qah-line)">
+                ${groupTitle('move', 'coral', t('btnPosTitle'))}
+                <div style="font-size:11px;color:var(--qah-muted);line-height:1.6">${t('btnPosHint')}</div>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+                    <button class="qah-btn secondary" id="qah-btn-pos-reset">${t('btnPosReset')}</button>
+                    <span id="qah-btn-pos-status" style="font-size:11px;color:var(--qah-ok)"></span>
+                </div>
+            </div>
+            <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--qah-line)">
                 ${groupTitle('keyboard', 'gold', t('hotkeyTitle'))}
                 <div class="qah-field">
                     <label>${t('hotkeyToggle')}</label>
@@ -867,6 +984,10 @@ export function main() {
         document.getElementById('qah-hotkey-screenshot').onkeydown = captureHotkey;
         document.getElementById('qah-save-config').onclick = () => saveConfig('qah-save-status');
         document.getElementById('qah-sync-on').onchange = (e) => setSyncEnabled(e.target.checked);
+        document.getElementById('qah-btn-pos-reset').onclick = () => {
+            resetBtnPos();
+            document.getElementById('qah-btn-pos-status').textContent = t('btnPosResetDone');
+        };
     }
 
     // ===== AI providers =====

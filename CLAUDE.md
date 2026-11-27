@@ -37,6 +37,7 @@ Quiz AI Helper — 浏览器扩展 (Manifest V3，基于 [WXT](https://wxt.dev) 
 
 - 配置 key `qah_config`：开启「跨设备同步」时存 `chrome.storage.sync`，否则存 `chrome.storage.local`；开关是每台设备独立的（local key `qah_sync`），读写一律走 `configArea()` / `saveConfigToStorage()`，不要直接调 `storage.local`。首次打开时若 sync 里已有配置会自动跟随开启；sync 单 key 上限 8KB，文档等大数据不能进配置。`storage.onChanged` 监听其他标签页 / 设备的修改后 `renderAll()` + `applyDomainGate()`。storage 回调是异步的，加载后需重新渲染 + `applyDomainGate()`
 - 截图大图预览 `#qah-viewer` 是 panel 的**兄弟节点**（同样由 `attachUI()` 挂载、`applyTheme()` 设主题），不能放进 panel：panel 有 `transform`，会让 fixed 子元素只盖住面板。键盘监听用捕获阶段，打开时拦截 Esc / 方向键，避免触发页面或快捷键
+- 悬浮按钮可拖动（`main.js`「Draggable floating button」）：位置按 hostname 存在 `chrome.storage.local` 的 `qah_btn_pos`（`{host:{x,y}}`，负值 = 距右/下边，不进 `qah_config`、不同步），`placeBtn()` 夹在视口内并在 resize 时重算；移动 <4px 算点击，拖动结束吞掉随后的 click；拖动结束监听 `lostpointercapture`（窗口外松开也能结束）。按钮在左半边时 panel 加 `.qah-left` 改从左侧打开
 - panel/btn 必须**同步挂载**到 DOM（后续大量 `document.getElementById` 依赖），域名门控只控制 `btn.style.display`，不挂/卸 DOM
 - 重渲染 tab 时注意保留 `#qah-load-status` 等状态信息，不要静默吞掉错误
 - 扫描结果同理：`renderDocsTab()` 每次重建都会把 `#qah-scan-result` 清空，故扫描列表持久化在 `lastScanUrls`（+ `loadedScanUrls` 记录已加载项）里，由 `renderScanResult()` 在每次重渲染末尾回填；加载一个 PDF 后其余项不能消失。`loadUrl()` 返回 boolean 供此判断

@@ -83,9 +83,11 @@ const PROVIDERS = [
     { id: 'p4', preset: 'ollama', name: '', protocol: 'openai', baseUrl: 'http://localhost:11434/v1', apiKey: '', model: 'qwen2.5vl:7b' }
 ];
 
-// Hide the page (and the floating button) so only the panel is drawn on a transparent background
+// Hide the page (and the floating button) so only the panel is drawn on a transparent background.
+// Animations are frozen so re-runs give identical images (the logo twinkles).
 const PANEL_ONLY_CSS = `html,body{background:transparent!important}
-body>*:not(#qah-panel):not(#qah-viewer){visibility:hidden!important}`;
+body>*:not(#qah-panel):not(#qah-viewer){visibility:hidden!important}
+#qah-panel *{animation:none!important}`;
 
 // ---- Reference documents: a 2-page PDF (rendered by Chromium) and a markdown file ----
 const pdfBrowser = await chromium.launch();
@@ -118,7 +120,7 @@ async function run(L) {
     const locale = L === 'zh' ? 'zh-CN' : 'en-US';
     const ctx = await chromium.launchPersistentContext(path.join(TMP, 'profile-' + L), {
         headless: false, // extensions need a headed browser
-        deviceScaleFactor: 2, viewport: { width: 1280, height: 1000 }, locale,
+        deviceScaleFactor: 2, viewport: { width: 1280, height: 1200 }, locale,
         args: [`--lang=${locale}`, `--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`]
     });
     try {
@@ -144,7 +146,7 @@ async function run(L) {
         await page.setViewportSize({ width: 1100, height: 620 });
         await page.waitForTimeout(200);
         await page.screenshot({ path: `${OUT}/01-floating-button${sfx}.png` });
-        await page.setViewportSize({ width: 1280, height: 1000 });
+        await page.setViewportSize({ width: 1280, height: 1200 });
         await page.waitForTimeout(200);
 
         let panelOnly = null;
